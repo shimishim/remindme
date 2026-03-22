@@ -1,0 +1,77 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/flutter_build.sh
+.symlinks/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/modules.xml
+.idea/*.iws
+.idea/*.iml
+.idea/*.ipr
+.idea/shelf
+.idea/workspace.xml
+
+# Generated code
+*.g.dart
+*.config.dart
+
+# macOS files
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+/node_modules/
+npm-debug.log
+
+# Web
+web/index.html.bak
+web/index.html
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Other
+.packages
+.metadata
+pubspec.lock
+.dart_tool/

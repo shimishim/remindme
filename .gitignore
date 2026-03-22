@@ -1,0 +1,17 @@
+# Node & Dart artifacts
+**/node_modules/
+**/build/
+**/.dart_tool/
+**/.idea/
+**/.vscode/
+**/.DS_Store
+**/pubspec.lock
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.metadata
+**/coverage/
+**/.env
+**/.env.*
+**/google-services.json
+**/reminder-*-firebase-adminsdk-*.json
