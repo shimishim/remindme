@@ -11,8 +11,8 @@ class ApiService {
   ApiService({required this.baseUrl}) {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 20),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
       contentType: 'application/json',
     ));
 
@@ -97,6 +97,7 @@ class ApiService {
       throw Exception('Failed to fetch reminders: ${e.message}');
     }
   }
+
   Future<Reminder> getReminder(String reminderId) async {
     try {
       final response = await _dio.get(
