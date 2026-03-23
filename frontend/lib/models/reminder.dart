@@ -10,11 +10,11 @@ class Reminder {
   final DateTime createdAt;
   final DateTime? completedAt;
   final DateTime? snoozedUntil;
-  
+
   final String personality; // sarcastic, coach, friend
   final bool allowVoice;
   final int escalationLevel;
-  
+
   final String status; // pending, completed, snoozed
   final DateTime? lastEscalatedAt;
 
@@ -149,19 +149,19 @@ class Reminder {
       title: json['title'] as String,
       description: json['description'] as String? ?? '',
       scheduledTime: DateTime.parse(json['scheduledTime'] as String).toLocal(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'] as String)
+          ? DateTime.parse(json['completedAt'] as String).toLocal()
           : null,
       snoozedUntil: json['snoozedUntil'] != null
-          ? DateTime.parse(json['snoozedUntil'] as String)
+          ? DateTime.parse(json['snoozedUntil'] as String).toLocal()
           : null,
       personality: json['personality'] as String? ?? 'sarcastic',
       allowVoice: json['allowVoice'] as bool? ?? false,
       escalationLevel: json['escalationLevel'] as int? ?? 0,
       status: json['status'] as String? ?? 'pending',
       lastEscalatedAt: json['lastEscalatedAt'] != null
-          ? DateTime.parse(json['lastEscalatedAt'] as String)
+          ? DateTime.parse(json['lastEscalatedAt'] as String).toLocal()
           : null,
     );
   }

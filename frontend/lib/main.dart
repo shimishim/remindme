@@ -28,35 +28,60 @@ void _handleFcmMessage(RemoteMessage message, NotificationService ns) {
   final id = NotificationIdGenerator.idFromReminderId(reminderId);
 
   if (type == 'FULL_SCREEN_ALERT') {
-    ns.showFullScreenAlert(id: id, title: title, message: body, payload: reminderId);
+    ns.showFullScreenAlert(
+        id: id, title: title, message: body, payload: reminderId);
   } else {
     // All reminder notifications are urgent (heads-up with sound)
-    ns.showNotification(id: id, title: title, body: body, payload: reminderId, urgent: true);
+    ns.showNotification(
+        id: id, title: title, body: body, payload: reminderId, urgent: true);
   }
 }
 
 void main() async {
+  // Print network debug info for real device troubleshooting
+  // (NetworkInterface debug removed for compatibility)
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  debugPrint('Initializing Firebase...');
+  try {
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized');
+  } catch (e, st) {
+    debugPrint('Firebase initialization failed: $e\n$st');
+  }
 
   // Auto sign-in anonymously if not already logged in
   final auth = FirebaseAuth.instance;
   if (auth.currentUser == null) {
     try {
+      debugPrint('Signing in anonymously...');
       await auth.signInAnonymously();
-    } catch (e) {
-      // Anonymous auth failed - continue anyway, app will work offline
-      debugPrint('Anonymous sign-in failed: $e');
+      debugPrint('Anonymous sign-in success');
+    } catch (e, st) {
+      debugPrint('Anonymous sign-in failed: $e\n$st');
     }
+  } else {
+    debugPrint('Already signed in: [32m${auth.currentUser?.uid}[0m');
   }
 
   // Initialize notification service
   final notificationService = NotificationService();
-  await notificationService.initialize();
+  try {
+    debugPrint('Initializing notification service...');
+    await notificationService.initialize();
+    debugPrint('Notification service initialized');
+  } catch (e, st) {
+    debugPrint('Notification service init failed: $e\n$st');
+  }
 
   // Request notification permissions
   final messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission(alert: true, badge: true, sound: true);
+  try {
+    debugPrint('Requesting notification permissions...');
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
+    debugPrint('Notification permissions requested');
+  } catch (e, st) {
+    debugPrint('Notification permission request failed: $e\n$st');
+  }
 
   // Background handler (app terminated / in background)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -66,6 +91,7 @@ void main() async {
     _handleFcmMessage(message, notificationService);
   });
 
+  debugPrint('Running app...');
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -79,6 +105,7 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
+    debugPrint('authState: [36m$authState[0m');
 
     return MaterialApp(
       title: 'תזכיר לי',
@@ -134,11 +161,36 @@ class MyApp extends ConsumerWidget {
       ),
       themeMode: ThemeMode.light,
       home: authState.when(
-        data: (user) => const HomePage(),
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        error: (_, __) => const HomePage(),
+        data: (user) {
+          debugPrint('authStateProvider data: user=${user?.uid}');
+          return const HomePage();
+        },
+        loading: () {
+          debugPrint('authStateProvider loading...');
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        },
+        error: (err, stack) {
+          debugPrint('authStateProvider error: $err\n$stack');
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('שגיאה באימות: $err'),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => ref.refresh(authStateProvider),
+                    child: const Text('נסה שוב'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

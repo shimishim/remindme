@@ -17,8 +17,16 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 });
 
 final apiServiceProvider = Provider<ApiService>((ref) {
+  // Automatic baseUrl selection for API:
+  // - Android emulator: 10.0.2.2
+  // - iOS simulator: localhost
+  // - Real device: your computer's local IP (e.g. 10.0.0.2)
+  //
+  // You can override with an environment variable or config if needed.
+
+  // Force emulator baseUrl for Android emulator
   return ApiService(
-    baseUrl: 'http://10.0.0.2:3000', // Real device / WiFi IP of dev machine
+    baseUrl: 'http://10.0.2.2:3000',
   );
 });
 
@@ -34,14 +42,15 @@ Future<void> registerFcmTokenIfNeeded(ApiService api) async {
 // ========== REMINDER  PROVIDERS ==========
 
 /// Watch all reminders for current user
-final userRemindersProvider = StreamProvider.family<List<Reminder>, String>((ref, userId) async* {
+final userRemindersProvider =
+    StreamProvider.family<List<Reminder>, String>((ref, userId) async* {
   final db = ref.watch(databaseProvider);
   final api = ref.watch(apiServiceProvider);
-  
+
   // First, try to sync with backend
   try {
     final backendReminders = await api.getReminders();
-    
+
     // Update local database with backend data
     for (final reminder in backendReminders) {
       final existing = await db.getReminderById(reminder.id);
@@ -57,7 +66,8 @@ final userRemindersProvider = StreamProvider.family<List<Reminder>, String>((ref
   }
 
   // Watch local database
-  yield* db.watchUserReminders(userId)
+  yield* db
+      .watchUserReminders(userId)
       .map((entities) => entities.map((e) => e.toDomain()).toList())
       .asBroadcastStream();
 });
@@ -65,27 +75,29 @@ final userRemindersProvider = StreamProvider.family<List<Reminder>, String>((ref
 /// Get pending reminders
 final pendingRemindersProvider = StreamProvider<List<Reminder>>((ref) async* {
   final db = ref.watch(databaseProvider);
-  
-  yield* db.watchPendingReminders()
+
+  yield* db
+      .watchPendingReminders()
       .map((entities) => entities.map((e) => e.toDomain()).toList())
       .asBroadcastStream();
 });
 
 /// Create a new reminder
-final createReminderProvider = FutureProvider.family<Reminder, CreateReminderParams>((ref, params) async {
+final createReminderProvider =
+    FutureProvider.family<Reminder, CreateReminderParams>((ref, params) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
-  
+
   // Create via API
   final reminder = await api.createReminder(
     text: params.text,
     personality: params.personality,
     allowVoice: params.allowVoice,
   );
-  
+
   // Save to local database
   await db.createReminder(reminder.toDatabase());
-  
+
   return reminder;
 });
 
@@ -102,29 +114,32 @@ class CreateReminderParams {
 }
 
 /// Complete reminder
-final completeReminderProvider = FutureProvider.family<void, String>((ref, reminderId) async {
+final completeReminderProvider =
+    FutureProvider.family<void, String>((ref, reminderId) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
-  
+
   await api.completeReminder(reminderId);
   await db.completeReminder(reminderId);
 });
 
 /// Snooze reminder
-final snoozeReminderProvider = FutureProvider.family<void, (String, int)>((ref, params) async {
+final snoozeReminderProvider =
+    FutureProvider.family<void, (String, int)>((ref, params) async {
   final (reminderId, minutes) = params;
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
-  
+
   await api.snoozeReminder(reminderId, minutes: minutes);
   await db.snoozeReminder(reminderId, Duration(minutes: minutes));
 });
 
 /// Delete reminder
-final deleteReminderProvider = FutureProvider.family<void, String>((ref, reminderId) async {
+final deleteReminderProvider =
+    FutureProvider.family<void, String>((ref, reminderId) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
-  
+
   await api.deleteReminder(reminderId);
   await db.deleteReminder(reminderId);
 });

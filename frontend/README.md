@@ -2,75 +2,58 @@
 
 Aggressive escalating reminder app for Android. Ensures users never miss important tasks with progressive notifications, full-screen alerts, and optional voice calls.
 
-## Features
 
-- 🧠 **Natural Language Input**: Just type "Call Hezi tonight" and let AI parse it
-- 🔥 **Escalation System**: Notification → Full-screen alert → Voice call
-- 📱 **Material 3 UI**: Modern, clean interface
-- 💾 **Local Storage**: Drift SQLite for offline support
-- 🔄 **Real-time Sync**: Cloud sync with backend
-- 🎨 **Personality Types**: Sarcastic, Coach, or Friend tone
-- 🔔 **Smart Notifications**: Different channels for different urgency levels
+# RemindMe Flutter Mobile App
 
-## Project Structure
+אפליקציית תזכורות מתקדמת לאנדרואיד.
+
+## מבנה ספריות
 
 ```
-lib/
-├── main.dart                 # App entry point
-├── models/
-│   ├── reminder.dart        # Domain model
-│   ├── database.dart        # Drift database tables
-│   └── app_database.dart    # Drift database implementation
-├── pages/
-│   ├── home_page.dart       # Main reminder list
-│   └── create_reminder_page.dart # Create new reminder
-├── services/
-│   ├── api_service.dart     # Backend communication
-│   └── notification_service.dart # Local notifications
-├── providers/
-│   └── reminder_providers.dart # Riverpod state management
-└── widgets/
-    └── reminder_card.dart   # Reminder list item
+frontend/
+├── analysis_options.yaml
+├── pubspec.yaml
+├── README.md
+├── android/
+├── assets/
+├── build/
+├── lib/
+│   ├── main.dart
+│   ├── models/
+│   ├── pages/
+│   ├── providers/
+│   ├── services/
+│   └── widgets/
+├── test/
+└── ...
 ```
 
-## Prerequisites
+## התקנה והרצה
 
-- Flutter 3.0+
-- Dart 3.0+
-- Android SDK 21+
-- Redis (for backend job scheduling)
+1. התקנת תלויות:
+  ```bash
+  cd frontend
+  flutter pub get
+  ```
+2. הרצת build לקוד גנרטיבי:
+  ```bash
+  flutter pub run build_runner build
+  ```
+3. הרצת האפליקציה:
+  ```bash
+  flutter run
+  ```
 
-## Setup
+## פקודות נפוצות
 
-### 1. Install Dependencies
+- בדיקות: `flutter test`
+- בניית APK: `flutter build apk`
+- בניית App Bundle: `flutter build appbundle`
 
-```bash
-flutter pub get
-```
+## הערות
 
-### 2. Generate Code
-
-```bash
-flutter pub run build_runner build
-```
-
-This generates:
-- `app_database.g.dart` (Drift database)
-- `reminder_providers.g.dart` (Riverpod providers)
-
-### 3. Run App
-
-```bash
-flutter run
-```
-
-Or for release:
-```bash
-flutter run --release
-```
-
-## Architecture
-
+- ודא שה-backend רץ בנפרד (ראה README בתיקיית backend).
+- לעדכון קבצים/מבנה – עדכן גם כאן.
 ### State Management: Riverpod
 - `userRemindersProvider` - Watch user's reminders (streams from local DB)
 - `createReminderProvider` - Create new reminder (sync with backend)

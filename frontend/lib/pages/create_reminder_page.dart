@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reminder_app/providers/reminder_providers.dart';
-import 'package:reminder_app/services/speech_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:reminder_app/services/tts_service.dart';
+
+import 'package:permission_handler/permission_handler.dart';
 
 class CreateReminderPage extends ConsumerStatefulWidget {
   const CreateReminderPage({Key? key}) : super(key: key);
@@ -17,15 +19,17 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
   bool _allowVoice = false;
   bool _isLoading = false;
 
-  final SpeechService _speech = SpeechService();
+  late stt.SpeechToText _speech;
   final TtsService _tts = TtsService();
   bool _isSpeaking = false;
   bool _isListening = false;
+  String _speechError = '';
 
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController();
+    _speech = stt.SpeechToText();
   }
 
   @override
@@ -67,7 +71,8 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                   color: _isListening ? Colors.red : Colors.grey[600],
                   size: 28,
                 ),
-                onPressed: _toggleSpeaking,
+                tooltip: 'הקלט דיבור',
+                onPressed: _isListening ? _stopListening : _startListening,
               ),
             ),
           ),
@@ -86,6 +91,12 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                   ),
                 ],
               ),
+            ),
+          if (_speechError.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child:
+                  Text(_speechError, style: const TextStyle(color: Colors.red)),
             ),
           const SizedBox(height: 24),
 
@@ -223,6 +234,56 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     setState(() => _isSpeaking = true);
     await _tts.speak(_textController.text, language: 'he-IL');
     setState(() => _isSpeaking = false);
+  }
+
+  Future<void> _startListening() async {
+    // בקשת הרשאת מיקרופון
+    var status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      setState(() {
+        _isListening = false;
+        _speechError = 'לא ניתנה הרשאת מיקרופון';
+      });
+      return;
+    }
+
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'done' || status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (error) {
+        setState(() {
+          _isListening = false;
+          _speechError = error.errorMsg;
+        });
+      },
+    );
+    if (available) {
+      setState(() {
+        _isListening = true;
+        _speechError = '';
+      });
+      _speech.listen(
+        localeId: 'he_IL',
+        onResult: (result) {
+          setState(() {
+            _textController.text = result.recognizedWords;
+          });
+        },
+      );
+    } else {
+      setState(() {
+        _isListening = false;
+        _speechError = 'Speech recognition unavailable';
+      });
+    }
+  }
+
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    setState(() => _isListening = false);
   }
 
   void _handleCreate() async {

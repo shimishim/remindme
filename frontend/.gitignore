@@ -5,6 +5,7 @@
 .packages
 .pub-cache/
 .pub/
+*google-services.json*
 build/
 ios/Flutter/Flutter.framework/
 ios/Flutter/Flutter.podspec
