@@ -26,7 +26,7 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 
   // Force emulator baseUrl for Android emulator
   return ApiService(
-    baseUrl: 'http://10.0.2.2:3000',
+    baseUrl: 'https://remindme-ewvv.onrender.com',
   );
 });
 
