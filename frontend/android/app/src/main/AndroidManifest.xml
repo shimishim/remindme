@@ -55,17 +55,6 @@
       </intent-filter>
     </activity>
 
-    <!-- Broadcast receiver for boot completed -->
-    <receiver
-      android:name=".BootCompletedReceiver"
-      android:exported="true"
-      android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
-      
-      <intent-filter>
-        <action android:name="android.intent.action.BOOT_COMPLETED" />
-      </intent-filter>
-    </receiver>
-
     <!-- Broadcast receiver for reminders -->
     <receiver
       android:name=".ReminderBroadcastReceiver"
