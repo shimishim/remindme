@@ -26,7 +26,7 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 
   // Force emulator baseUrl for Android emulator
   return ApiService(
-    baseUrl: 'https://remindme-ewvv.onrender.com',
+    baseUrl: 'https://remindme-ewvv.onrender.com', // כתובת מרוחקת לשרת בפרודקשן
   );
 });
 

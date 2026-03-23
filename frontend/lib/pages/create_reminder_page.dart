@@ -65,30 +65,29 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
               contentPadding: const EdgeInsets.all(16),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _isListening ? Icons.mic : Icons.mic_none,
-                  color: _isListening ? Colors.red : Colors.grey[600],
-                  size: 28,
-                ),
-                tooltip: 'הקלט דיבור',
-                onPressed: _isListening ? _stopListening : _startListening,
-              ),
-            ),
-          ),
-          if (_isListening)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.graphic_eq, color: Colors.red[400], size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'מאזין...',
-                    style: TextStyle(
-                        color: Colors.red[400], fontWeight: FontWeight.bold),
+                  IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.red : Colors.grey[600],
+                      size: 28,
+                    ),
+                    tooltip: 'הקלט דיבור',
+                    onPressed: _isListening ? _stopListening : _startListening,
                   ),
+                  if (_isListening) ...[
+                    Icon(Icons.graphic_eq, color: Colors.red[400], size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'מאזין...',
+                      style: TextStyle(
+                        color: Colors.red[400],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

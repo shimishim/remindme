@@ -42,10 +42,12 @@ final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 final authStateProvider = StreamProvider<User?>((ref) {
   final auth = FirebaseAuth.instance;
 
-  print('authStateProvider: subscribing to authStateChanges');
+  developer.log('authStateProvider: subscribing to authStateChanges',
+      name: 'AuthService');
 
   return auth.authStateChanges().map((user) {
-    print('authStateProvider: user = \u001b[33m${user?.uid}\u001b[0m');
+    developer.log('authStateProvider: user = \u001b[33m${user?.uid}\u001b[0m',
+        name: 'AuthService');
     return user;
   });
 });
