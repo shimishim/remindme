@@ -4,25 +4,35 @@ import { readFileSync } from 'fs';
 
 let serviceAccount;
 
-// Load credentials from service account JSON file (preferred) or fall back to env vars
-const JSON_KEY_PATH = 'C:/Users/user/remind/reminder-1b6a3-firebase-adminsdk-fbsvc-7ba557fa47.json';
-try {
-  serviceAccount = JSON.parse(readFileSync(JSON_KEY_PATH, 'utf8'));
-  console.log('✅ Loaded Firebase credentials from JSON file');
-} catch {
-  // Fallback to environment variables
-  serviceAccount = {
-    type: 'service_account',
-    project_id: config.FIREBASE_PROJECT_ID,
-    private_key_id: 'key-id',
-    private_key: config.FIREBASE_PRIVATE_KEY,
-    client_email: config.FIREBASE_CLIENT_EMAIL,
-    client_id: 'client-id',
-    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-    token_uri: 'https://oauth2.googleapis.com/token',
-    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-    client_x509_cert_url: ''
-  };
+// Priority 1: Full JSON string via env var (recommended for Render/cloud deployments)
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    console.log('✅ Loaded Firebase credentials from FIREBASE_SERVICE_ACCOUNT_JSON env var');
+  } catch (e) {
+    console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', e.message);
+    process.exit(1);
+  }
+} else {
+  // Priority 2: Local JSON file (for local development)
+  const JSON_KEY_PATH = 'C:/Users/user/remind/reminder-1b6a3-firebase-adminsdk-fbsvc-7ba557fa47.json';
+  try {
+    serviceAccount = JSON.parse(readFileSync(JSON_KEY_PATH, 'utf8'));
+    console.log('✅ Loaded Firebase credentials from JSON file');
+  } catch {
+    // Priority 3: Individual env vars fallback
+    if (!config.FIREBASE_PROJECT_ID || !config.FIREBASE_PRIVATE_KEY || !config.FIREBASE_CLIENT_EMAIL) {
+      console.error('❌ No Firebase credentials found. Set FIREBASE_SERVICE_ACCOUNT_JSON env var on Render.');
+      process.exit(1);
+    }
+    serviceAccount = {
+      type: 'service_account',
+      project_id: config.FIREBASE_PROJECT_ID,
+      private_key: config.FIREBASE_PRIVATE_KEY,
+      client_email: config.FIREBASE_CLIENT_EMAIL,
+    };
+    console.log('✅ Loaded Firebase credentials from individual env vars');
+  }
 }
 
 const databaseURL = config.FIREBASE_DATABASE_URL ||
