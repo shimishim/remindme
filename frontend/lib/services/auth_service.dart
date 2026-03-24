@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:developer' as developer;
 
 /// Wraps FirebaseAuth and exposes sign-in / sign-out helpers.
 class AuthService {
@@ -41,7 +42,6 @@ final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 /// Stream of the current Firebase User (null when logged out)
 final authStateProvider = StreamProvider<User?>((ref) {
   final auth = FirebaseAuth.instance;
-
   developer.log('authStateProvider: subscribing to authStateChanges',
       name: 'AuthService');
 

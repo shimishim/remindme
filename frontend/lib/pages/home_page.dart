@@ -85,11 +85,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               .where((r) => r.status == 'pending' && !r.isOverdue)
               .toList()
             ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
-          final snoozedReminders =
-              reminders.where((r) => r.status == 'snoozed').toList()
+          final snoozedReminders = reminders
+              .where((r) => r.status == 'snoozed')
+              .toList()
             ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
-          final completedReminders =
-              reminders.where((r) => r.status == 'completed').toList()
+          final completedReminders = reminders
+              .where((r) => r.status == 'completed')
+              .toList()
             ..sort((a, b) => b.scheduledTime.compareTo(a.scheduledTime));
 
           return ListView(
@@ -219,7 +221,7 @@ class _SectionHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
+              color: color.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

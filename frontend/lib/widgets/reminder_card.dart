@@ -24,7 +24,7 @@ class ReminderCard extends ConsumerWidget {
           border: isCompleted
               ? Border.all(color: Colors.grey[300]!)
               : Border.all(
-                  color: _getStatusColor().withValues(alpha: 0.3),
+                  color: _getStatusColor().withOpacity(0.3),
                   width: 2,
                 ),
           color: isCompleted ? Colors.grey[50] : Colors.white,
@@ -34,10 +34,8 @@ class ReminderCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row
               Row(
                 children: [
-                  // Status indicator
                   Container(
                     width: 12,
                     height: 12,
@@ -47,22 +45,18 @@ class ReminderCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Title
                   Expanded(
                     child: Text(
                       reminder.title,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.bold,
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: isCompleted
-                                ? Colors.grey[600]
-                                : Colors.black,
+                            decoration:
+                                isCompleted ? TextDecoration.lineThrough : null,
+                            color:
+                                isCompleted ? Colors.grey[600] : Colors.black,
                           ),
                     ),
                   ),
-                  // Escalation level indicator
                   if (reminder.escalationLevel > 0 && !isCompleted)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -96,8 +90,6 @@ class ReminderCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
-              // Description
               if (reminder.description.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 24, bottom: 8),
@@ -110,13 +102,10 @@ class ReminderCard extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-
-              // Meta information row
               Padding(
                 padding: const EdgeInsets.only(left: 24, bottom: 8),
                 child: Row(
                   children: [
-                    // Time
                     Icon(Icons.schedule, size: 16, color: Colors.grey[500]),
                     const SizedBox(width: 4),
                     Text(
@@ -126,14 +115,13 @@ class ReminderCard extends ConsumerWidget {
                           ),
                     ),
                     const SizedBox(width: 16),
-                    // Personality tag
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: _getPersonalityColor().withValues(alpha: 0.2),
+                        color: _getPersonalityColor().withOpacity(0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -152,8 +140,6 @@ class ReminderCard extends ConsumerWidget {
                   ],
                 ),
               ),
-
-              // Action buttons
               if (!isCompleted)
                 SizedBox(
                   height: 36,
@@ -167,13 +153,8 @@ class ReminderCard extends ConsumerWidget {
                             foregroundColor: Colors.white,
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'עשיתי ✓',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                            ),
-                          ),
+                          child: const Text('עשיתי ✓',
+                              style: TextStyle(fontSize: 12)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -182,14 +163,9 @@ class ReminderCard extends ConsumerWidget {
                           onPressed: () => _handleSnooze(context, ref),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.orange),
-                            padding: EdgeInsets.zero,
                           ),
-                          child: const Text(
-                            'דחה 10 דקות',
-                            style: TextStyle(
-                              fontSize: 12,
-                            ),
-                          ),
+                          child: const Text('דחה 10 דקות',
+                              style: TextStyle(fontSize: 12)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -199,13 +175,9 @@ class ReminderCard extends ConsumerWidget {
                           onPressed: () => _handleDelete(context, ref),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.red),
-                            padding: EdgeInsets.zero,
                           ),
-                          child: const Icon(
-                            Icons.delete_outline,
-                            size: 16,
-                            color: Colors.red,
-                          ),
+                          child: const Icon(Icons.delete_outline,
+                              size: 16, color: Colors.red),
                         ),
                       ),
                     ],
@@ -257,21 +229,40 @@ class ReminderCard extends ConsumerWidget {
     }
   }
 
-  void _handleComplete(BuildContext context, WidgetRef ref) {
-    ref.read(completeReminderProvider(reminder.id));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('תזכורת הושלמה ✓')),
-    );
+  Future<void> _handleComplete(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(completeReminderProvider(reminder.id).future);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('תזכורת הושלמה ✓')),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('שגיאה, נסה שוב')),
+      );
+    }
   }
 
-  void _handleSnooze(BuildContext context, WidgetRef ref) {
-    ref.read(snoozeReminderProvider((reminder.id, 10)));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('הודחה ל־10 דקות')),
-    );
+  Future<void> _handleSnooze(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(
+        snoozeReminderProvider(
+          SnoozeReminderParams(
+            reminderId: reminder.id,
+            minutes: 10,
+          ),
+        ).future,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('הודחה ל־10 דקות')),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('שגיאה בדחייה')),
+      );
+    }
   }
 
-  void _handleDelete(BuildContext context, WidgetRef ref) {
+  Future<void> _handleDelete(BuildContext context, WidgetRef ref) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -283,12 +274,19 @@ class ReminderCard extends ConsumerWidget {
             child: const Text('ביטול'),
           ),
           TextButton(
-            onPressed: () {
-              ref.read(deleteReminderProvider(reminder.id));
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('תזכורת נמחקה')),
-              );
+            onPressed: () async {
+              try {
+                await ref.read(deleteReminderProvider(reminder.id).future);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('תזכורת נמחקה')),
+                );
+              } catch (_) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('שגיאה במחיקה')),
+                );
+              }
             },
             child: const Text('מחק', style: TextStyle(color: Colors.red)),
           ),

@@ -6,28 +6,16 @@ import 'package:reminder_app/services/api_service.dart';
 import 'package:reminder_app/services/notification_service.dart';
 
 // ========== DATABASE PROVIDER ==========
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
-});
+final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 
 // ========== SERVICES PROVIDERS ==========
 
-final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
-});
+final notificationServiceProvider =
+    Provider<NotificationService>((ref) => NotificationService());
 
 final apiServiceProvider = Provider<ApiService>((ref) {
-  // Automatic baseUrl selection for API:
-  // - Android emulator: 10.0.2.2
-  // - iOS simulator: localhost
-  // - Real device: your computer's local IP (e.g. 10.0.0.2)
-  //
-  // You can override with an environment variable or config if needed.
-
-  // Force emulator baseUrl for Android emulator
-  return ApiService(
-    baseUrl: 'https://remindme-ewvv.onrender.com', // כתובת מרוחקת לשרת בפרודקשן
-  );
+  final String baseUrl = 'https://remindme-ewvv.onrender.com';
+  return ApiService(baseUrl: baseUrl);
 });
 
 /// After successful login, register the FCM token with the backend.
@@ -39,47 +27,40 @@ Future<void> registerFcmTokenIfNeeded(ApiService api) async {
   } catch (_) {} // non-critical
 }
 
+/// Call this ONCE after login, e.g., in HomePage's initState
+Future<void> syncRemindersWithBackend(WidgetRef ref, String userId) async {
+  final db = ref.read(databaseProvider);
+  final api = ref.read(apiServiceProvider);
+  try {
+    final backendReminders = await api.getReminders();
+    for (final reminder in backendReminders) {
+      final existing = await db.getReminderById(reminder.id);
+      if (existing == null) {
+        await db.createReminder(reminder.toDatabase());
+      }
+    }
+  } catch (_) {
+    // handle error/log if needed
+  }
+}
+
 // ========== REMINDER  PROVIDERS ==========
 
 /// Watch all reminders for current user
 final userRemindersProvider =
-    StreamProvider.family<List<Reminder>, String>((ref, userId) async* {
+    StreamProvider.family<List<Reminder>, String>((ref, userId) {
   final db = ref.watch(databaseProvider);
-  final api = ref.watch(apiServiceProvider);
-
-  // First, try to sync with backend
-  try {
-    final backendReminders = await api.getReminders();
-
-    // Update local database with backend data
-    for (final reminder in backendReminders) {
-      final existing = await db.getReminderById(reminder.id);
-      if (existing == null) {
-        // New reminder from backend
-        await db.createReminder(
-          reminder.toDatabase(),
-        );
-      }
-    }
-  } catch (e) {
-    // sync failed; continue with local data
-  }
-
-  // Watch local database
-  yield* db
+  return db
       .watchUserReminders(userId)
-      .map((entities) => entities.map((e) => e.toDomain()).toList())
-      .asBroadcastStream();
+      .map((entities) => entities.map((e) => e.toDomain()).toList());
 });
 
 /// Get pending reminders
-final pendingRemindersProvider = StreamProvider<List<Reminder>>((ref) async* {
+final pendingRemindersProvider = StreamProvider<List<Reminder>>((ref) {
   final db = ref.watch(databaseProvider);
-
-  yield* db
+  return db
       .watchPendingReminders()
-      .map((entities) => entities.map((e) => e.toDomain()).toList())
-      .asBroadcastStream();
+      .map((entities) => entities.map((e) => e.toDomain()).toList());
 });
 
 /// Create a new reminder
@@ -113,6 +94,18 @@ class CreateReminderParams {
   });
 }
 
+class SnoozeReminderParams {
+  final String reminderId;
+  final int minutes;
+  SnoozeReminderParams({required this.reminderId, required this.minutes});
+}
+
+// Example curl/Postman usage for /api/v1/reminders endpoint:
+// curl -X POST "https://remindme-ewvv.onrender.com/api/v1/reminders" \
+//   -H "Authorization: Bearer <FIREBASE_ID_TOKEN>" \
+//   -H "Content-Type: application/json" \
+//   -d '{"text": "Buy milk", "personality": "sarcastic", "allowVoice": false}'
+
 /// Complete reminder
 final completeReminderProvider =
     FutureProvider.family<void, String>((ref, reminderId) async {
@@ -125,13 +118,12 @@ final completeReminderProvider =
 
 /// Snooze reminder
 final snoozeReminderProvider =
-    FutureProvider.family<void, (String, int)>((ref, params) async {
-  final (reminderId, minutes) = params;
+    FutureProvider.family<void, SnoozeReminderParams>((ref, params) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
 
-  await api.snoozeReminder(reminderId, minutes: minutes);
-  await db.snoozeReminder(reminderId, Duration(minutes: minutes));
+  await api.snoozeReminder(params.reminderId, minutes: params.minutes);
+  await db.snoozeReminder(params.reminderId, Duration(minutes: params.minutes));
 });
 
 /// Delete reminder

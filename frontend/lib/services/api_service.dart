@@ -2,64 +2,56 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:reminder_app/models/reminder.dart';
 
-/// API client for communicating with RemindMe backend.
-/// Automatically attaches the Firebase Auth ID token to every request.
 class ApiService {
   final String baseUrl;
   late final Dio _dio;
 
   ApiService({required this.baseUrl}) {
-    _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-      contentType: 'application/json',
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
 
-    // Inject Bearer token on every request
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final token = await user.getIdToken();
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            final token = await user.getIdToken();
+            options.headers['Authorization'] = 'Bearer $token';
+          }
 
-    _dio.interceptors.add(LogInterceptor(
-      requestHeader: false,
-      requestBody: true,
-      responseBody: true,
-    ));
+          print('➡️ ${options.method} ${options.uri}');
+          print('Body: ${options.data}');
+
+          return handler.next(options);
+        },
+        onError: (e, handler) {
+          print('❌ ERROR: ${e.response?.statusCode}');
+          print('Response: ${e.response?.data}');
+          return handler.next(e);
+        },
+      ),
+    );
   }
 
-  /// Register / update FCM device token
-  Future<void> registerFcmToken(String fcmToken) async {
-    try {
-      await _dio.put('/api/v1/users/fcm-token', data: {'fcmToken': fcmToken});
-    } on DioException catch (e) {
-      throw Exception('Failed to register FCM token: ${e.message}');
-    }
-  }
-
-  /// Unregister FCM token on logout
-  Future<void> unregisterFcmToken() async {
-    try {
-      await _dio.delete('/api/v1/users/fcm-token');
-    } catch (_) {} // Best-effort on logout
-  }
-
-  /// Create a new reminder
+  // ================= CREATE =================
   Future<Reminder> createReminder({
     required String text,
     required String personality,
     required bool allowVoice,
   }) async {
+    const url = '/api/v1/reminders';
+
     try {
       final response = await _dio.post(
-        '/api/v1/reminders',
+        url,
         data: {
           'text': text,
           'personality': personality,
@@ -67,122 +59,103 @@ class ApiService {
         },
       );
 
-      if (response.statusCode == 201) {
-        return Reminder.fromJson(response.data['reminder']);
-      } else {
-        throw Exception('Failed to create reminder: ${response.statusCode}');
+      print('SUMMARY → ${response.statusCode} | ${response.data}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+
+        if (data is Map && data.containsKey('reminder')) {
+          return Reminder.fromJson(data['reminder']);
+        }
+
+        return Reminder.fromJson(data);
       }
+
+      throw Exception('Failed to create reminder: ${response.statusCode}');
     } on DioException catch (e) {
-      throw Exception('Failed to create reminder: ${e.message}');
+      final statusCode = e.response?.statusCode;
+      final body = e.response?.data;
+
+      print('❌ CREATE ERROR → $statusCode | $body');
+
+      throw Exception('Failed to create reminder: $statusCode');
     }
   }
 
-  /// Get all reminders for the authenticated user
-  Future<List<Reminder>> getReminders({String status = 'all'}) async {
-    try {
-      final response = await _dio.get(
-        '/api/v1/reminders',
-        queryParameters: {'status': status},
-      );
+  // ================= GET =================
+  Future<List<Reminder>> getReminders() async {
+    final response = await _dio.get('/api/v1/reminders');
 
-      if (response.statusCode == 200) {
-        final List<dynamic> remindersJson = response.data['reminders'];
-        return remindersJson
-            .map((json) => Reminder.fromJson(json as Map<String, dynamic>))
-            .toList();
-      } else {
-        throw Exception('Failed to fetch reminders: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to fetch reminders: ${e.message}');
+    if (response.statusCode == 200) {
+      final List list = response.data['reminders'];
+      return list.map((e) => Reminder.fromJson(e)).toList();
+    }
+
+    throw Exception('Failed to fetch reminders');
+  }
+
+  // ================= COMPLETE =================
+  Future<void> completeReminder(String id) async {
+    final res = await _dio.put('/api/v1/reminders/$id/complete');
+    if (res.statusCode != 200) {
+      throw Exception('Failed to complete');
     }
   }
 
-  Future<Reminder> getReminder(String reminderId) async {
-    try {
-      final response = await _dio.get(
-        '/api/v1/reminders/detail/$reminderId',
-      );
+  // ================= SNOOZE =================
+  Future<void> snoozeReminder(String id, {int minutes = 10}) async {
+    final res = await _dio.put(
+      '/api/v1/reminders/$id/snooze',
+      data: {'minutes': minutes},
+    );
 
-      if (response.statusCode == 200) {
-        return Reminder.fromJson(response.data['reminder']);
-      } else {
-        throw Exception('Failed to fetch reminder: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to fetch reminder: ${e.message}');
+    if (res.statusCode != 200) {
+      throw Exception('Failed to snooze');
     }
   }
 
-  /// Mark reminder as completed
-  Future<void> completeReminder(String reminderId) async {
-    try {
-      final response = await _dio.put(
-        '/api/v1/reminders/$reminderId/complete',
-      );
+  // ================= DELETE =================
+  Future<void> deleteReminder(String id) async {
+    final res = await _dio.delete('/api/v1/reminders/$id');
 
-      if (response.statusCode != 200) {
-        throw Exception('Failed to complete reminder: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to complete reminder: ${e.message}');
+    if (res.statusCode != 200) {
+      throw Exception('Failed to delete');
     }
   }
 
-  /// Snooze reminder
-  Future<void> snoozeReminder(String reminderId, {int minutes = 10}) async {
-    try {
-      final response = await _dio.put(
-        '/api/v1/reminders/$reminderId/snooze',
-        data: {'minutes': minutes},
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to snooze reminder: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to snooze reminder: ${e.message}');
-    }
-  }
-
-  /// Delete reminder
-  Future<void> deleteReminder(String reminderId) async {
-    try {
-      final response = await _dio.delete(
-        '/api/v1/reminders/$reminderId',
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to delete reminder: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to delete reminder: ${e.message}');
-    }
-  }
-
-  /// Test escalation (for debugging)
-  Future<void> testEscalation(String reminderId, {int level = 1}) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/reminders/$reminderId/test-escalation',
-        data: {'level': level},
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to test escalation: ${response.statusCode}');
-      }
-    } on DioException catch (e) {
-      throw Exception('Failed to test escalation: ${e.message}');
-    }
-  }
-
-  /// Check server health
+  // ================= HEALTH =================
   Future<bool> checkHealth() async {
     try {
-      final response = await _dio.get('/health');
-      return response.statusCode == 200;
-    } catch (e) {
+      final res = await _dio.get('/health');
+      return res.statusCode == 200;
+    } catch (_) {
       return false;
+    }
+  }
+
+  // ================= FCM TOKEN =================
+  Future<void> registerFcmToken(String token) async {
+    try {
+      final res =
+          await _dio.put('/api/v1/users/fcm-token', data: {'fcmToken': token});
+      if (res.statusCode != 200) {
+        throw Exception('Failed to register FCM token');
+      }
+    } catch (e) {
+      print('❌ registerFcmToken error: $e');
+      // Not critical, so don't rethrow
+    }
+  }
+
+  Future<void> unregisterFcmToken() async {
+    try {
+      final res = await _dio.delete('/api/v1/users/fcm-token');
+      if (res.statusCode != 200) {
+        throw Exception('Failed to unregister FCM token');
+      }
+    } catch (e) {
+      print('❌ unregisterFcmToken error: $e');
+      // Not critical, so don't rethrow
     }
   }
 }

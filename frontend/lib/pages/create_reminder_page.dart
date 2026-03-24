@@ -54,49 +54,57 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _textController,
-            minLines: 3,
-            maxLines: 5,
-            decoration: InputDecoration(
-              hintText: 'דוגמה: "להתקשר לחזי הערב ב־8"',
-              hintStyle: TextStyle(color: Colors.grey[400]),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.all(16),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: _isListening ? Colors.red : Colors.grey[600],
-                      size: 28,
-                    ),
-                    tooltip: 'הקלט דיבור',
-                    onPressed: _isListening ? _stopListening : _startListening,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _textController,
+                minLines: 3,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: 'דוגמה: "להתקשר לחזי הערב ב־8"',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  if (_isListening) ...[
-                    Icon(Icons.graphic_eq, color: Colors.red[400], size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'מאזין...',
-                      style: TextStyle(
-                        color: Colors.red[400],
-                        fontWeight: FontWeight.bold,
+                  contentPadding: const EdgeInsets.all(16),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _isListening ? Icons.mic : Icons.mic_none,
+                          color: _isListening ? Colors.red : Colors.grey[600],
+                          size: 28,
+                        ),
+                        tooltip: 'הקלט דיבור',
+                        onPressed:
+                            _isListening ? _stopListening : _startListening,
                       ),
-                    ),
-                  ],
-                ],
+                      if (_isListening) ...[
+                        Icon(Icons.graphic_eq,
+                            color: Colors.red[400], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'מאזין...',
+                          style: TextStyle(
+                            color: Colors.red[400],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          if (_speechError.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child:
-                  Text(_speechError, style: const TextStyle(color: Colors.red)),
-            ),
+              if (_speechError.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_speechError,
+                      style: const TextStyle(color: Colors.red)),
+                ),
+            ],
+          ),
           const SizedBox(height: 24),
 
           // Personality selection

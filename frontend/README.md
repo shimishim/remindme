@@ -1,3 +1,31 @@
+## Debugging API Endpoints
+
+To test the reminder creation endpoint manually, use curl or Postman:
+
+### curl example
+
+```
+curl -X POST "https://remindme-ewvv.onrender.com/api/v1/reminders" \
+  -H "Authorization: Bearer <FIREBASE_ID_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Buy milk", "personality": "sarcastic", "allowVoice": false}'
+```
+
+Replace `<FIREBASE_ID_TOKEN>` with a valid Firebase user token.
+
+### Postman
+
+1. Set method to POST and URL to `https://remindme-ewvv.onrender.com/api/v1/reminders`
+2. Add header: `Authorization: Bearer <FIREBASE_ID_TOKEN>`
+3. Add header: `Content-Type: application/json`
+4. Set body (raw, JSON):
+   ```json
+   {
+     "text": "Buy milk",
+     "personality": "sarcastic",
+     "allowVoice": false
+   }
+   ```
 # RemindMe Flutter Mobile App
 
 Aggressive escalating reminder app for Android. Ensures users never miss important tasks with progressive notifications, full-screen alerts, and optional voice calls.
