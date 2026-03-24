@@ -64,28 +64,39 @@ class ReminderCard extends ConsumerWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange[100],
+                        color: const Color(0xFF60A5FA).withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF60A5FA)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.trending_up,
                             size: 14,
-                            color: Colors.orange[700],
+                            color: Color(0xFF2563EB),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'L${reminder.escalationLevel}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: Colors.orange[700],
+                              color: Color(0xFF2563EB),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                  if (isCompleted)
+                    IconButton(
+                      onPressed: () => _handleDelete(context, ref),
+                      icon: const Icon(Icons.delete_outline,
+                          size: 18, color: Colors.grey),
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'מחק',
                     ),
                 ],
               ),
@@ -162,22 +173,24 @@ class ReminderCard extends ConsumerWidget {
                         child: OutlinedButton(
                           onPressed: () => _handleSnooze(context, ref),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.orange),
+                            side: const BorderSide(color: Color(0xFF60A5FA)),
                           ),
                           child: const Text('דחה 10 דקות',
                               style: TextStyle(fontSize: 12)),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      SizedBox(
-                        width: 40,
-                        child: OutlinedButton(
-                          onPressed: () => _handleDelete(context, ref),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2563EB)),
-                          ),
-                          child: const Icon(Icons.delete_outline,
-                              size: 16, color: Color(0xFF2563EB)),
+                      IconButton(
+                        onPressed: () => _handleDelete(context, ref),
+                        icon: const Icon(Icons.delete_outline,
+                            size: 20, color: Color(0xFF2563EB)),
+                        style: IconButton.styleFrom(
+                          side: const BorderSide(
+                              color: Color(0xFF2563EB), width: 1),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.all(6),
+                          minimumSize: const Size(36, 36),
                         ),
                       ),
                     ],
@@ -193,7 +206,9 @@ class ReminderCard extends ConsumerWidget {
   Color _getStatusColor() {
     switch (reminder.status) {
       case 'pending':
-        return reminder.isOverdue ? const Color(0xFF1E40AF) : const Color(0xFF2563EB);
+        return reminder.isOverdue
+            ? const Color(0xFF1E40AF)
+            : const Color(0xFF2563EB);
       case 'snoozed':
         return Colors.orange;
       case 'completed':
@@ -288,7 +303,8 @@ class ReminderCard extends ConsumerWidget {
                 );
               }
             },
-            child: const Text('מחק', style: TextStyle(color: Color(0xFF2563EB))),
+            child:
+                const Text('מחק', style: TextStyle(color: Color(0xFF2563EB))),
           ),
         ],
       ),
