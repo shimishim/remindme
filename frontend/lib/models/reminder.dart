@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 /// Domain model for Reminder
 class Reminder {
@@ -69,26 +70,24 @@ class Reminder {
     );
   }
 
-  /// Format scheduled time to human-readable string
+  /// Format scheduled time to human-readable string (always in Israel timezone)
   String formatScheduledTime() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final israelTz = tz.getLocation('Asia/Jerusalem');
+    final local = tz.TZDateTime.from(scheduledTime.toUtc(), israelTz);
+    final now = tz.TZDateTime.now(israelTz);
+    final today = tz.TZDateTime(israelTz, now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-    final reminderDate = DateTime(
-      scheduledTime.year,
-      scheduledTime.month,
-      scheduledTime.day,
-    );
+    final reminderDate = tz.TZDateTime(israelTz, local.year, local.month, local.day);
 
     final timeFormatter = DateFormat('HH:mm');
 
     if (reminderDate == today) {
-      return 'היום, ${timeFormatter.format(scheduledTime)}';
+      return 'היום, ${timeFormatter.format(local)}';
     } else if (reminderDate == tomorrow) {
-      return 'מחר, ${timeFormatter.format(scheduledTime)}';
+      return 'מחר, ${timeFormatter.format(local)}';
     } else {
       final dateFormatter = DateFormat('dd/MM/yyyy, HH:mm');
-      return dateFormatter.format(scheduledTime);
+      return dateFormatter.format(local);
     }
   }
 
