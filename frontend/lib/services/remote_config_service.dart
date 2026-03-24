@@ -28,8 +28,9 @@ class RemoteConfigService {
     try {
       await rc.setConfigSettings(RemoteConfigSettings(
         fetchTimeout: const Duration(seconds: 10),
-        // In production fetch at most once per hour to save quota.
-        minimumFetchInterval: const Duration(hours: 1),
+        // Zero interval — always fetch fresh values on app start (good for testing).
+        // Change back to Duration(hours: 1) before wide release.
+        minimumFetchInterval: Duration.zero,
       ));
 
       await rc.setDefaults(const {

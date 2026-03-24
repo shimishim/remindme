@@ -112,14 +112,20 @@ final createReminderProvider =
   // Schedule a LOCAL notification at the exact scheduledTime.
   // This is the primary notification mechanism — does NOT depend on the
   // backend being awake (Render free tier sleeps after 15 min inactivity).
-  await ns.scheduleReminderNotification(
-    id: NotificationIdGenerator.idFromReminderId(reminder.id),
-    title: reminder.title,
-    body:
-        reminder.description.isNotEmpty ? reminder.description : reminder.title,
-    scheduledTime: reminder.scheduledTime,
-    payload: reminder.id,
-  );
+  // Wrapped in try-catch so a notification failure never prevents reminder creation.
+  try {
+    await ns.scheduleReminderNotification(
+      id: NotificationIdGenerator.idFromReminderId(reminder.id),
+      title: reminder.title,
+      body: reminder.description.isNotEmpty
+          ? reminder.description
+          : reminder.title,
+      scheduledTime: reminder.scheduledTime,
+      payload: reminder.id,
+    );
+  } catch (_) {
+    // Non-fatal: reminder is saved, notification scheduling failed silently.
+  }
 
   return reminder;
 });

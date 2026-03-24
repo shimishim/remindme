@@ -215,6 +215,7 @@ class NotificationService {
 
   /// Schedule a local notification at an exact future time.
   /// Works even when the app is in background or the server is unreachable.
+  /// Falls back to inexact scheduling if exact alarm permission is not granted.
   Future<void> scheduleReminderNotification({
     required int id,
     required String title,
@@ -241,17 +242,40 @@ class NotificationService {
 
     final details = NotificationDetails(android: androidDetails);
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tzScheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: payload,
-    );
+    // Try exact alarm first; fall back to inexact if permission not granted
+    try {
+      final canExact = await canScheduleExactNotifications();
+      final mode = canExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle;
+
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzScheduled,
+        details,
+        androidScheduleMode: mode,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: payload,
+      );
+    } catch (e) {
+      // Last resort: try inexact if exact threw
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          id,
+          title,
+          body,
+          tzScheduled,
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: payload,
+        );
+      } catch (_) {}
+    }
   }
 
   /// Check if exact alarm permission is granted (Android 12+).
