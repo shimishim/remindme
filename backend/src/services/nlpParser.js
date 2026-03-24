@@ -62,19 +62,37 @@ export class NLPParser {
    * Extract time from Hebrew text
    */
   extractTimeHebrew(text) {
-    // Relative: "בעוד X דקות/שעות"
-    const relativeMatch = text.match(/בעוד\s+(\d+)\s+(דקות?|דק׳?|שעות?|ימים|יום)/);
+    const unitMap = { 'דקה': 'minute', 'דקות': 'minute', 'דק׳': 'minute',
+                      'שעה': 'hour', 'שעות': 'hour',
+                      'יום': 'day', 'ימים': 'day' };
+
+    // Relative: "בעוד X דקות/שעות" OR "עוד X דקות/שעות" (with arabic numerals)
+    const relativeMatch = text.match(/(?:בעוד|עוד)\s+(\d+)\s+(דקות?|דק׳?|שעות?|ימים|יום)/);
     if (relativeMatch) {
       const value = parseInt(relativeMatch[1]);
-      const unitMap = { 'דקה': 'minute', 'דקות': 'minute', 'דק׳': 'minute',
-                        'שעה': 'hour', 'שעות': 'hour',
-                        'יום': 'day', 'ימים': 'day' };
       const unit = unitMap[relativeMatch[2]] || 'minute';
       return { relative: { value, unit }, confidence: 0.95 };
     }
 
-    // Relative: "בעוד שעה/חצי שעה/רבע שעה"
-    const relWordMatch = text.match(/בעוד\s+(חצי שעה|רבע שעה|שעה)/);
+    // Relative: "בעוד/עוד X דקות/שעות" with Hebrew word numbers
+    const hebrewNums = {
+      'אחת': 1, 'אחד': 1, 'שתי': 2, 'שתיים': 2, 'שני': 2,
+      'שלוש': 3, 'שלושה': 3, 'ארבע': 4, 'ארבעה': 4,
+      'חמש': 5, 'חמישה': 5, 'שש': 6, 'שישה': 6,
+      'שבע': 7, 'שבעה': 7, 'שמונה': 8, 'תשע': 9, 'תשעה': 9, 'עשר': 10, 'עשרה': 10,
+      'עשרים': 20, 'שלושים': 30, 'ארבעים': 40, 'חמישים': 50
+    };
+    const hebrewNumKeys = Object.keys(hebrewNums).join('|');
+    const wordNumRegex = new RegExp(`(?:בעוד|עוד)\\s+(${hebrewNumKeys})\\s+(דקות?|דק׳?|שעות?)`);
+    const wordNumMatch = text.match(wordNumRegex);
+    if (wordNumMatch) {
+      const value = hebrewNums[wordNumMatch[1]];
+      const unit = unitMap[wordNumMatch[2]] || 'minute';
+      return { relative: { value, unit }, confidence: 0.95 };
+    }
+
+    // Relative: "בעוד/עוד שעה/חצי שעה/רבע שעה"
+    const relWordMatch = text.match(/(?:בעוד|עוד)\s+(חצי שעה|רבע שעה|שעה)/);
     if (relWordMatch) {
       const map = { 'שעה': 60, 'חצי שעה': 30, 'רבע שעה': 15 };
       return { relative: { value: map[relWordMatch[1]], unit: 'minute' }, confidence: 0.95 };
