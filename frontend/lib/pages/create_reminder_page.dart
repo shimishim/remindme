@@ -74,7 +74,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                       IconButton(
                         icon: Icon(
                           _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening ? Colors.red : Colors.grey[600],
+                          color: _isListening ? const Color(0xFF2563EB) : Colors.grey[600],
                           size: 28,
                         ),
                         tooltip: 'הקלט דיבור',
@@ -83,12 +83,12 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                       ),
                       if (_isListening) ...[
                         Icon(Icons.graphic_eq,
-                            color: Colors.red[400], size: 20),
+                            color: const Color(0xFF60A5FA), size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'מאזין...',
-                          style: TextStyle(
-                            color: Colors.red[400],
+                          style: const TextStyle(
+                            color: Color(0xFF60A5FA),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -101,7 +101,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(_speechError,
-                      style: const TextStyle(color: Colors.red)),
+                      style: const TextStyle(color: Color(0xFF2563EB))),
                 ),
             ],
           ),

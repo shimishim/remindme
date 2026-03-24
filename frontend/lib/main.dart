@@ -130,7 +130,7 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B6B), // Aggressive red
+          seedColor: const Color(0xFF2563EB),
           brightness: Brightness.light,
         ),
         fontFamily: 'Roboto',
@@ -158,7 +158,7 @@ class MyApp extends ConsumerWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF6B6B),
+          seedColor: const Color(0xFF2563EB),
           brightness: Brightness.dark,
         ),
       ),

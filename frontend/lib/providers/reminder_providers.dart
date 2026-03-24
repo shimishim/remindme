@@ -14,7 +14,7 @@ final notificationServiceProvider =
     Provider<NotificationService>((ref) => NotificationService());
 
 final apiServiceProvider = Provider<ApiService>((ref) {
-  final String baseUrl = 'https://remindme-ewvv.onrender.com';
+  final String baseUrl = 'https://remindme-evwv.onrender.com';
   return ApiService(baseUrl: baseUrl);
 });
 

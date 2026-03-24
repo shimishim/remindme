@@ -174,10 +174,10 @@ class ReminderCard extends ConsumerWidget {
                         child: OutlinedButton(
                           onPressed: () => _handleDelete(context, ref),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
+                            side: const BorderSide(color: Color(0xFF2563EB)),
                           ),
                           child: const Icon(Icons.delete_outline,
-                              size: 16, color: Colors.red),
+                              size: 16, color: Color(0xFF2563EB)),
                         ),
                       ),
                     ],
@@ -193,7 +193,7 @@ class ReminderCard extends ConsumerWidget {
   Color _getStatusColor() {
     switch (reminder.status) {
       case 'pending':
-        return reminder.isOverdue ? Colors.red : Colors.blue;
+        return reminder.isOverdue ? const Color(0xFF1E40AF) : const Color(0xFF2563EB);
       case 'snoozed':
         return Colors.orange;
       case 'completed':
@@ -288,7 +288,7 @@ class ReminderCard extends ConsumerWidget {
                 );
               }
             },
-            child: const Text('מחק', style: TextStyle(color: Colors.red)),
+            child: const Text('מחק', style: TextStyle(color: Color(0xFF2563EB))),
           ),
         ],
       ),

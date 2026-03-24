@@ -102,7 +102,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _SectionHeader(
                   title: 'לביצוע',
                   count: overdueReminders.length,
-                  color: Colors.red[800]!,
+                  color: const Color(0xFF1E40AF),
                 ),
                 ...overdueReminders
                     .map((r) => ReminderCard(reminder: r))
@@ -115,7 +115,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 _SectionHeader(
                   title: 'פעיל כעת',
                   count: activeReminders.length,
-                  color: Colors.red,
+                  color: const Color(0xFF2563EB),
                 ),
                 ...activeReminders
                     .map((r) => ReminderCard(reminder: r))
@@ -157,7 +157,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+              Icon(Icons.error_outline, size: 64, color: Color(0xFF60A5FA)),
               const SizedBox(height: 16),
               Text('שגיאה בטעינה: $error'),
               const SizedBox(height: 8),
