@@ -1,10 +1,11 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 /// Notification Channel IDs
 class NotificationChannels {
-  static const String reminders = 'reminders_v2';
-  static const String escalation = 'escalation_alerts_v2';
-  static const String urgent = 'urgent_reminders_v2';
+  static const String reminders = 'reminders_v3';
+  static const String escalation = 'escalation_alerts_v3';
+  static const String urgent = 'urgent_reminders_v3';
 }
 
 /// Notification Service for handling local notifications
@@ -45,7 +46,7 @@ class NotificationService {
             NotificationChannels.reminders,
             'Reminders',
             description: 'Notification for regular reminders',
-            importance: Importance.defaultImportance,
+            importance: Importance.high,
             enableVibration: true,
             playSound: true,
           ),
@@ -97,8 +98,8 @@ class NotificationService {
       urgent ? 'Urgent Reminders' : 'Reminders',
       channelDescription:
           urgent ? 'Urgent notification' : 'Regular reminder notification',
-      importance: urgent ? Importance.max : Importance.defaultImportance,
-      priority: urgent ? Priority.max : Priority.defaultPriority,
+      importance: urgent ? Importance.max : Importance.high,
+      priority: urgent ? Priority.max : Priority.high,
       enableVibration: true,
       playSound: true,
       fullScreenIntent: urgent,
@@ -207,6 +208,47 @@ class NotificationService {
       '📞 זימון מטלפון',
       'חזק לחיי אתה הוזמן לטלפון: $callerName',
       details,
+      payload: payload,
+    );
+  }
+
+  /// Schedule a local notification at an exact future time.
+  /// Works even when the app is in background or the server is unreachable.
+  Future<void> scheduleReminderNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+    String? payload,
+  }) async {
+    final tzScheduled = tz.TZDateTime.from(scheduledTime, tz.local);
+    final now = tz.TZDateTime.now(tz.local);
+
+    // Don't schedule notifications in the past
+    if (tzScheduled.isBefore(now)) return;
+
+    final androidDetails = AndroidNotificationDetails(
+      NotificationChannels.reminders,
+      'Reminders',
+      channelDescription: 'Scheduled reminder notification',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+      visibility: NotificationVisibility.public,
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tzScheduled,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
   }

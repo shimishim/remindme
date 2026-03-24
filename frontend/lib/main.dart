@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reminder_app/pages/home_page.dart';
+import 'package:reminder_app/providers/reminder_providers.dart';
 import 'package:reminder_app/services/auth_service.dart';
 import 'package:reminder_app/services/notification_service.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 /// Background FCM handler — must be a top-level function
 @pragma('vm:entry-point')
@@ -41,6 +44,11 @@ void main() async {
   // Print network debug info for real device troubleshooting
   // (NetworkInterface debug removed for compatibility)
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize timezones — must be done before any notification scheduling
+  tz.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Jerusalem'));
+
   debugPrint('main(): Starting app initialization');
   try {
     debugPrint('main(): Initializing Firebase...');
@@ -95,8 +103,13 @@ void main() async {
 
   debugPrint('main(): Running app...');
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      overrides: [
+        // Provide the already-initialized NotificationService so all providers
+        // share the same instance (avoids uninitialized plugin errors).
+        notificationServiceProvider.overrideWithValue(notificationService),
+      ],
+      child: const MyApp(),
     ),
   );
   debugPrint('main(): runApp() called');
@@ -130,7 +143,7 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
+          seedColor: const Color(0xFF3370E5),
           brightness: Brightness.light,
         ),
         fontFamily: 'Roboto',
@@ -158,7 +171,7 @@ class MyApp extends ConsumerWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
+          seedColor: const Color(0xFF3370E5),
           brightness: Brightness.dark,
         ),
       ),

@@ -68,8 +68,9 @@ final createReminderProvider =
     FutureProvider.family<Reminder, CreateReminderParams>((ref, params) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
+  final ns = ref.read(notificationServiceProvider);
 
-  // Create via API
+  // Create via API (NLP parsing + Firestore storage happens here)
   final reminder = await api.createReminder(
     text: params.text,
     personality: params.personality,
@@ -78,6 +79,17 @@ final createReminderProvider =
 
   // Save to local database
   await db.createReminder(reminder.toDatabase());
+
+  // Schedule a LOCAL notification at the exact scheduledTime.
+  // This is the primary notification mechanism — does NOT depend on the
+  // backend being awake (Render free tier sleeps after 15 min inactivity).
+  await ns.scheduleReminderNotification(
+    id: NotificationIdGenerator.idFromReminderId(reminder.id),
+    title: reminder.title,
+    body: reminder.description.isNotEmpty ? reminder.description : reminder.title,
+    scheduledTime: reminder.scheduledTime,
+    payload: reminder.id,
+  );
 
   return reminder;
 });
@@ -111,9 +123,16 @@ final completeReminderProvider =
     FutureProvider.family<void, String>((ref, reminderId) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
+  final ns = ref.read(notificationServiceProvider);
 
-  await api.completeReminder(reminderId);
+  // Cancel the scheduled local notification first
+  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
+  // Update local DB so UI updates immediately
   await db.completeReminder(reminderId);
+  // Sync with backend — don't let a sleeping server block the UI
+  try {
+    await api.completeReminder(reminderId);
+  } catch (_) {}
 });
 
 /// Snooze reminder
@@ -121,9 +140,29 @@ final snoozeReminderProvider =
     FutureProvider.family<void, SnoozeReminderParams>((ref, params) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
+  final ns = ref.read(notificationServiceProvider);
 
-  await api.snoozeReminder(params.reminderId, minutes: params.minutes);
+  final newTime = DateTime.now().add(Duration(minutes: params.minutes));
+
+  // Cancel old notification and schedule a new one for the snoozed time
+  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(params.reminderId));
+  final existing = await db.getReminderById(params.reminderId);
+  if (existing != null) {
+    await ns.scheduleReminderNotification(
+      id: NotificationIdGenerator.idFromReminderId(params.reminderId),
+      title: existing.title,
+      body: existing.description.isNotEmpty ? existing.description : existing.title,
+      scheduledTime: newTime,
+      payload: params.reminderId,
+    );
+  }
+
+  // Update local DB so UI updates immediately
   await db.snoozeReminder(params.reminderId, Duration(minutes: params.minutes));
+  // Sync with backend
+  try {
+    await api.snoozeReminder(params.reminderId, minutes: params.minutes);
+  } catch (_) {}
 });
 
 /// Delete reminder
@@ -131,9 +170,16 @@ final deleteReminderProvider =
     FutureProvider.family<void, String>((ref, reminderId) async {
   final api = ref.watch(apiServiceProvider);
   final db = ref.watch(databaseProvider);
+  final ns = ref.read(notificationServiceProvider);
 
-  await api.deleteReminder(reminderId);
+  // Cancel the scheduled local notification
+  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
+  // Update local DB immediately
   await db.deleteReminder(reminderId);
+  // Sync with backend
+  try {
+    await api.deleteReminder(reminderId);
+  } catch (_) {}
 });
 
 // Extension methods to convert between models and database entities

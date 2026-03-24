@@ -42,7 +42,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_friendlyError(e.code)),
-          backgroundColor: const Color(0xFF2563EB),
+          backgroundColor: const Color(0xFF3370E5),
         ),
       );
     } finally {
@@ -83,13 +83,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 children: [
                   // Logo / title
                   const Icon(Icons.notifications_active,
-                      size: 72, color: Color(0xFF2563EB)),
+                      size: 72, color: Color(0xFF3370E5)),
                   const SizedBox(height: 12),
                   Text(
                     'RemindMe',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.displayLarge
-                        ?.copyWith(color: const Color(0xFF2563EB)),
+                        ?.copyWith(color: const Color(0xFF3370E5)),
                   ),
                   const SizedBox(height: 4),
                   Text(
