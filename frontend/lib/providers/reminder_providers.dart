@@ -4,6 +4,7 @@ import 'package:reminder_app/models/app_database.dart';
 import 'package:reminder_app/models/reminder.dart';
 import 'package:reminder_app/services/api_service.dart';
 import 'package:reminder_app/services/notification_service.dart';
+import 'package:reminder_app/services/remote_config_service.dart';
 
 // ========== DATABASE PROVIDER ==========
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
@@ -13,9 +14,14 @@ final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final notificationServiceProvider =
     Provider<NotificationService>((ref) => NotificationService());
 
+/// Overridden in main() with the fully-initialised [RemoteConfigService].
+final remoteConfigServiceProvider = Provider<RemoteConfigService>((ref) =>
+    throw UnimplementedError(
+        'remoteConfigServiceProvider must be overridden in main()'));
+
 final apiServiceProvider = Provider<ApiService>((ref) {
-  final String baseUrl = 'https://remindme-evwv.onrender.com';
-  return ApiService(baseUrl: baseUrl);
+  final remoteConfig = ref.watch(remoteConfigServiceProvider);
+  return ApiService(baseUrl: remoteConfig.apiBaseUrl);
 });
 
 /// After successful login, register the FCM token with the backend.
@@ -24,6 +30,29 @@ Future<void> registerFcmTokenIfNeeded(ApiService api) async {
   try {
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) await api.registerFcmToken(token);
+  } catch (_) {} // non-critical
+}
+
+/// Reschedule all pending + snoozed reminders from local DB.
+/// Must be called on app start to restore alarms lost after device reboot.
+Future<void> rescheduleAllPendingReminders(WidgetRef ref) async {
+  final db = ref.read(databaseProvider);
+  final ns = ref.read(notificationServiceProvider);
+  try {
+    final pending = await db.getPendingReminders();
+    final snoozed = await db.getSnoozedReminders();
+    final all = [...pending, ...snoozed];
+    final toSchedule = all
+        .where((r) => r.scheduledTime.isAfter(DateTime.now()))
+        .map((r) => {
+              'id': NotificationIdGenerator.idFromReminderId(r.id),
+              'title': r.title,
+              'body': r.description.isNotEmpty ? r.description : r.title,
+              'scheduledTime': r.scheduledTime,
+              'payload': r.id,
+            })
+        .toList();
+    await ns.rescheduleAll(toSchedule);
   } catch (_) {} // non-critical
 }
 
@@ -86,7 +115,8 @@ final createReminderProvider =
   await ns.scheduleReminderNotification(
     id: NotificationIdGenerator.idFromReminderId(reminder.id),
     title: reminder.title,
-    body: reminder.description.isNotEmpty ? reminder.description : reminder.title,
+    body:
+        reminder.description.isNotEmpty ? reminder.description : reminder.title,
     scheduledTime: reminder.scheduledTime,
     payload: reminder.id,
   );
@@ -126,7 +156,8 @@ final completeReminderProvider =
   final ns = ref.read(notificationServiceProvider);
 
   // Cancel the scheduled local notification first
-  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
+  await ns
+      .cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
   // Update local DB so UI updates immediately
   await db.completeReminder(reminderId);
   // Sync with backend — don't let a sleeping server block the UI
@@ -145,13 +176,16 @@ final snoozeReminderProvider =
   final newTime = DateTime.now().add(Duration(minutes: params.minutes));
 
   // Cancel old notification and schedule a new one for the snoozed time
-  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(params.reminderId));
+  await ns.cancelNotification(
+      NotificationIdGenerator.idFromReminderId(params.reminderId));
   final existing = await db.getReminderById(params.reminderId);
   if (existing != null) {
     await ns.scheduleReminderNotification(
       id: NotificationIdGenerator.idFromReminderId(params.reminderId),
       title: existing.title,
-      body: existing.description.isNotEmpty ? existing.description : existing.title,
+      body: existing.description.isNotEmpty
+          ? existing.description
+          : existing.title,
       scheduledTime: newTime,
       payload: params.reminderId,
     );
@@ -173,7 +207,8 @@ final deleteReminderProvider =
   final ns = ref.read(notificationServiceProvider);
 
   // Cancel the scheduled local notification
-  await ns.cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
+  await ns
+      .cancelNotification(NotificationIdGenerator.idFromReminderId(reminderId));
   // Update local DB immediately
   await db.deleteReminder(reminderId);
   // Sync with backend

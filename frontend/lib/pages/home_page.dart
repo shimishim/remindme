@@ -16,11 +16,46 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Register FCM token with backend once after login
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Register FCM token with backend
       final api = ref.read(apiServiceProvider);
       registerFcmTokenIfNeeded(api);
+
+      // Reschedule all pending reminders (restores alarms lost after device reboot)
+      await rescheduleAllPendingReminders(ref);
+
+      // Check exact alarm permission (Android 12+) and prompt if not granted
+      final ns = ref.read(notificationServiceProvider);
+      final canSchedule = await ns.canScheduleExactNotifications();
+      if (!canSchedule && mounted) {
+        _showExactAlarmPermissionDialog();
+      }
     });
+  }
+
+  void _showExactAlarmPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('נדרשת הרשאה'),
+        content: const Text(
+            'כדי שהתזכורות יפעלו בזמן המדויק, יש לאפשר הגדרת התזדורות בנייד בהגדרות המכשיר.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('אחר כך'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final ns = ref.read(notificationServiceProvider);
+              await ns.requestExactAlarmsPermission();
+            },
+            child: const Text('פתח הגדרות'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

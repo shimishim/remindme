@@ -8,6 +8,7 @@ import 'package:reminder_app/pages/home_page.dart';
 import 'package:reminder_app/providers/reminder_providers.dart';
 import 'package:reminder_app/services/auth_service.dart';
 import 'package:reminder_app/services/notification_service.dart';
+import 'package:reminder_app/services/remote_config_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -57,6 +58,11 @@ void main() async {
   } catch (e, st) {
     debugPrint('main(): Firebase initialization failed: $e\n$st');
   }
+
+  // Initialize Remote Config (never throws — falls back to defaults)
+  final remoteConfig = await RemoteConfigService.initialize();
+  debugPrint(
+      'main(): RemoteConfig initialized, apiBaseUrl=${remoteConfig.apiBaseUrl}');
 
   // Auto sign-in anonymously if not already logged in
   final auth = FirebaseAuth.instance;
@@ -108,6 +114,8 @@ void main() async {
         // Provide the already-initialized NotificationService so all providers
         // share the same instance (avoids uninitialized plugin errors).
         notificationServiceProvider.overrideWithValue(notificationService),
+        // Provide the already-initialized RemoteConfigService.
+        remoteConfigServiceProvider.overrideWithValue(remoteConfig),
       ],
       child: const MyApp(),
     ),
@@ -121,10 +129,11 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
-    debugPrint('authState: [36m$authState[0m');
+    final remoteConfig = ref.watch(remoteConfigServiceProvider);
+    debugPrint('authState: [36m$authState[0m');
 
     return MaterialApp(
-      title: 'תזכיר לי',
+      title: remoteConfig.appTitle,
       debugShowCheckedModeBanner: false,
       locale: const Locale('he', 'IL'),
       supportedLocales: const [
@@ -143,7 +152,7 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3370E5),
+          seedColor: remoteConfig.primaryColor,
           brightness: Brightness.light,
         ),
         fontFamily: 'Roboto',
@@ -171,7 +180,7 @@ class MyApp extends ConsumerWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3370E5),
+          seedColor: remoteConfig.primaryColor,
           brightness: Brightness.dark,
         ),
       ),

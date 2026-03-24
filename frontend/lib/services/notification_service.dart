@@ -16,7 +16,8 @@ class NotificationService {
     _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
     // Android initialization
-    const androidInitSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInitSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
     // iOS initialization
     const iosInitSettings = DarwinInitializationSettings();
@@ -246,11 +247,47 @@ class NotificationService {
       body,
       tzScheduled,
       details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: payload,
     );
+  }
+
+  /// Check if exact alarm permission is granted (Android 12+).
+  /// Returns true on older Android versions (permission not needed).
+  Future<bool> canScheduleExactNotifications() async {
+    final result = await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.canScheduleExactNotifications();
+    return result ?? true; // null = pre-Android-12, always allowed
+  }
+
+  /// Opens Android settings so the user can grant exact alarm permission.
+  Future<void> requestExactAlarmsPermission() async {
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestExactAlarmsPermission();
+  }
+
+  /// Reschedule all pending reminders from the database.
+  /// Call on app start — covers device reboots where OS clears scheduled alarms.
+  Future<void> rescheduleAll(
+      List<Map<String, dynamic>> pendingReminders) async {
+    for (final r in pendingReminders) {
+      final scheduledTime = r['scheduledTime'] as DateTime;
+      if (scheduledTime.isAfter(DateTime.now())) {
+        await scheduleReminderNotification(
+          id: r['id'] as int,
+          title: r['title'] as String,
+          body: r['body'] as String,
+          scheduledTime: scheduledTime,
+          payload: r['payload'] as String?,
+        );
+      }
+    }
   }
 
   /// Cancel notification
@@ -271,8 +308,8 @@ class NotificationService {
 
 // Helper to generate unique notification IDs
 class NotificationIdGenerator {
-  static int generateId() => DateTime.now().millisecondsSinceEpoch.hashCode.abs();
+  static int generateId() =>
+      DateTime.now().millisecondsSinceEpoch.hashCode.abs();
 
-  static int idFromReminderId(String reminderId) =>
-      reminderId.hashCode.abs();
+  static int idFromReminderId(String reminderId) => reminderId.hashCode.abs();
 }
