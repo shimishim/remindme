@@ -211,15 +211,15 @@ extension ReminderEntityDomain on ReminderEntity {
       userId: userId,
       title: title,
       description: description,
-      scheduledTime: scheduledTime,
-      createdAt: createdAt,
-      completedAt: completedAt,
-      snoozedUntil: snoozedUntil,
+      scheduledTime: scheduledTime.toLocal(),
+      createdAt: createdAt.toLocal(),
+      completedAt: completedAt?.toLocal(),
+      snoozedUntil: snoozedUntil?.toLocal(),
       personality: personality,
       allowVoice: allowVoice,
       escalationLevel: escalationLevel,
       status: status,
-      lastEscalatedAt: lastEscalatedAt,
+      lastEscalatedAt: lastEscalatedAt?.toLocal(),
     );
   }
 }

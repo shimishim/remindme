@@ -21,7 +21,6 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
 
   late stt.SpeechToText _speech;
   final TtsService _tts = TtsService();
-  bool _isSpeaking = false;
   bool _isListening = false;
   String _speechError = '';
 
@@ -230,17 +229,6 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _toggleSpeaking() async {
-    if (_isSpeaking) {
-      await _tts.stop();
-      setState(() => _isSpeaking = false);
-      return;
-    }
-    setState(() => _isSpeaking = true);
-    await _tts.speak(_textController.text, language: 'he-IL');
-    setState(() => _isSpeaking = false);
   }
 
   Future<void> _startListening() async {
