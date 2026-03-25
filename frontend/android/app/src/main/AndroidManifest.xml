@@ -12,6 +12,8 @@
   <uses-permission android:name="android.permission.READ_PHONE_STATE" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <!-- Required to request battery optimisation exemption via permission_handler -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
   <application
     android:label="RemindMe"
@@ -64,6 +66,21 @@
       
       <intent-filter>
         <action android:name="com.example.remindme.REMINDER_NOTIFICATION" />
+      </intent-filter>
+    </receiver>
+
+    <!-- Boot receiver: restores notification alarms after device reboot.
+         Works together with flutter_local_notifications' built-in
+         ScheduledNotificationBootReceiver (auto-merged from its manifest). -->
+    <receiver
+      android:name=".BootReceiver"
+      android:exported="false">
+
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <!-- HTC / ASUS quick-boot -->
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
       </intent-filter>
     </receiver>
   </application>

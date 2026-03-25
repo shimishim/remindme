@@ -289,19 +289,24 @@ class ReminderCard extends ConsumerWidget {
             child: const Text('ביטול'),
           ),
           TextButton(
-            onPressed: () async {
-              try {
-                await ref.read(deleteReminderProvider(reminder.id).future);
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('תזכורת נמחקה')),
-                );
-              } catch (_) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('שגיאה במחיקה')),
-                );
-              }
+            onPressed: () {
+              // Dismiss the dialog immediately — don't wait for async work.
+              // This prevents the dialog from appearing frozen while the API
+              // call times out (Render free tier can sleep for up to 10 s).
+              Navigator.pop(ctx);
+              ref.read(deleteReminderProvider(reminder.id).future).then((_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('תזכורת נמחקה')),
+                  );
+                }
+              }).catchError((_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('שגיאה במחיקה')),
+                  );
+                }
+              });
             },
             child:
                 const Text('מחק', style: TextStyle(color: Color(0xFF3370E5))),

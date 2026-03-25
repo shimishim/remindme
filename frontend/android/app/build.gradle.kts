@@ -32,16 +32,6 @@ android {
         versionName = flutter.versionName
     }
 
-    // Split per ABI — instead of one universal 200MB APK, produces one small APK per architecture
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = false
-        }
-    }
-
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

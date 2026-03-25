@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reminder_app/models/app_database.dart';
 import 'package:reminder_app/pages/home_page.dart';
 import 'package:reminder_app/providers/reminder_providers.dart';
 import 'package:reminder_app/services/auth_service.dart';
@@ -12,10 +13,36 @@ import 'package:reminder_app/services/remote_config_service.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Background FCM handler — must be a top-level function
+/// Returns true if the reminder is still pending or snoozed in the local DB.
+/// When the reminder was deleted/completed locally but the backend still fires
+/// an FCM push (e.g. because the Render free-tier server was asleep and
+/// missed the cancel call), this guard prevents showing a ghost notification.
+/// Falls back to true (show notification) on any DB error so we never
+/// silently drop a reminder the user hasn't acted on yet.
+Future<bool> _isReminderActive(String reminderId) async {
+  if (reminderId.isEmpty) return true;
+  final db = AppDatabase();
+  try {
+    final reminder = await db.getReminderById(reminderId);
+    if (reminder == null) return false; // deleted from local DB
+    return reminder.status == 'pending' || reminder.status == 'snoozed';
+  } catch (_) {
+    return true; // DB unavailable — show the notification to be safe
+  } finally {
+    await db.close();
+  }
+}
+
+/// Background FCM handler — must be a top-level function.
+/// Runs in a separate isolate when the app is terminated or in background.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  final reminderId = message.data['reminderId'] ?? '';
+  if (!await _isReminderActive(reminderId)) {
+    debugPrint('FCM background: skipping ghost notification for $reminderId');
+    return;
+  }
   final ns = NotificationService();
   await ns.initialize();
   _handleFcmMessage(message, ns);
@@ -102,8 +129,14 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Foreground handler (app is open)
-  FirebaseMessaging.onMessage.listen((message) {
+  FirebaseMessaging.onMessage.listen((message) async {
     debugPrint('main(): Foreground FCM message received');
+    final reminderId = message.data['reminderId'] ?? '';
+    if (!await _isReminderActive(reminderId)) {
+      debugPrint(
+          'main(): Skipping ghost FCM notification for reminder $reminderId');
+      return;
+    }
     _handleFcmMessage(message, notificationService);
   });
 
