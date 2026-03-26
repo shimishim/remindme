@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reminder_app/models/app_database.dart';
 import 'package:reminder_app/pages/home_page.dart';
 import 'package:reminder_app/providers/reminder_providers.dart';
+import 'package:reminder_app/services/api_service.dart';
 import 'package:reminder_app/services/auth_service.dart';
 import 'package:reminder_app/services/notification_service.dart';
 import 'package:reminder_app/services/remote_config_service.dart';
@@ -45,11 +46,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
   final ns = NotificationService();
   await ns.initialize();
-  _handleFcmMessage(message, ns);
+  _handleFcmMessage(message, ns, appInForeground: false);
 }
 
 /// Route an incoming FCM message to the right local notification style
-void _handleFcmMessage(RemoteMessage message, NotificationService ns) {
+void _handleFcmMessage(
+  RemoteMessage message,
+  NotificationService ns, {
+  required bool appInForeground,
+}) {
   final data = message.data;
   final notification = message.notification;
   final type = data['type'] ?? '';
@@ -57,6 +62,12 @@ void _handleFcmMessage(RemoteMessage message, NotificationService ns) {
   final body = notification?.body ?? data['body'] ?? '';
   final reminderId = data['reminderId'] ?? '';
   final id = NotificationIdGenerator.idFromReminderId(reminderId);
+
+  // If Android/iOS already received a visible notification payload while the
+  // app is backgrounded/terminated, avoid showing a second local notification.
+  if (!appInForeground && notification != null) {
+    return;
+  }
 
   if (type == 'FULL_SCREEN_ALERT') {
     ns.showFullScreenAlert(
@@ -110,10 +121,13 @@ void main() async {
   try {
     debugPrint('main(): Initializing notification service...');
     await notificationService.initialize();
+    await notificationService.ensurePermissionsForReliableDelivery();
     debugPrint('main(): Notification service initialized');
   } catch (e, st) {
     debugPrint('main(): Notification service init failed: $e\n$st');
   }
+
+  final apiService = ApiService(baseUrl: remoteConfig.apiBaseUrl);
 
   // Request notification permissions
   final messaging = FirebaseMessaging.instance;
@@ -137,8 +151,32 @@ void main() async {
           'main(): Skipping ghost FCM notification for reminder $reminderId');
       return;
     }
-    _handleFcmMessage(message, notificationService);
+    _handleFcmMessage(
+      message,
+      notificationService,
+      appInForeground: true,
+    );
   });
+
+  messaging.onTokenRefresh.listen((token) async {
+    try {
+      await apiService.registerFcmToken(token);
+      debugPrint('main(): Refreshed FCM token synced');
+    } catch (e, st) {
+      debugPrint('main(): FCM token refresh sync failed: $e\n$st');
+    }
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    debugPrint(
+        'main(): Notification tapped for reminder ${message.data['reminderId']}');
+  });
+
+  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  if (initialMessage != null) {
+    debugPrint(
+        'main(): App launched from notification for ${initialMessage.data['reminderId']}');
+  }
 
   debugPrint('main(): Running app...');
   runApp(

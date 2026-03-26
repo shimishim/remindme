@@ -61,7 +61,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 minLines: 3,
                 maxLines: 5,
                 decoration: InputDecoration(
-                  hintText: 'דוגמה: "להתקשר לחזי הערב ב־8"',
+                  hintText: 'דוגמה: "להתקשר לחיליק הערב ב־8"',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -73,7 +73,9 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                       IconButton(
                         icon: Icon(
                           _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening ? const Color(0xFF3370E5) : Colors.grey[600],
+                          color: _isListening
+                              ? const Color(0xFF3370E5)
+                              : Colors.grey[600],
                           size: 28,
                         ),
                         tooltip: 'הקלט דיבור',

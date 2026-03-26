@@ -96,7 +96,21 @@ export class EscalationEngine {
 
     const message = rule.defaultMessage[reminder.personality];
 
+    const escalationRecordId = `${reminder.id}_L${escalationLevel}`;
+    const existingRecord = await db
+      .collection('escalation_history')
+      .doc(escalationRecordId)
+      .get();
+
+    if (existingRecord.exists && existingRecord.data()?.status === 'sent') {
+      console.log(
+        `⏭️ Escalation L${escalationLevel} for reminder ${reminder.id} already sent`
+      );
+      return existingRecord.data();
+    }
+
     const escalationRecord = new EscalationHistory({
+      id: escalationRecordId,
       reminderId: reminder.id,
       userId: reminder.userId,
       level: escalationLevel,
@@ -106,10 +120,12 @@ export class EscalationEngine {
     });
 
     try {
+      let deliveryResult = null;
+
       // Route to appropriate service based on action
       switch (rule.action) {
         case 'PUSH_NOTIFICATION':
-          await this.notificationService.sendNotification(
+          deliveryResult = await this.notificationService.sendNotification(
             reminder.userId,
             reminder.title,
             message,
@@ -119,7 +135,7 @@ export class EscalationEngine {
 
         case 'FULL_SCREEN_ALERT':
           // Send signal to mobile app to show full-screen alert
-          await this.notificationService.sendFullScreenAlert(
+          deliveryResult = await this.notificationService.sendFullScreenAlert(
             reminder.userId,
             reminder.title,
             message,
@@ -138,7 +154,7 @@ export class EscalationEngine {
           break;
 
         case 'HUMOROUS_PUSH':
-          await this.notificationService.sendNotification(
+          deliveryResult = await this.notificationService.sendNotification(
             reminder.userId,
             `⏰ ${reminder.title}`,
             message,
@@ -151,6 +167,11 @@ export class EscalationEngine {
       }
 
       // Log escalation event
+      escalationRecord.metadata = {
+        ...escalationRecord.metadata,
+        delivery: deliveryResult
+      };
+
       await db.collection('escalation_history').doc(escalationRecord.id).set(
         escalationRecord.toJSON()
       );
@@ -167,7 +188,11 @@ export class EscalationEngine {
       );
 
       escalationRecord.status = 'failed';
-      escalationRecord.metadata = { error: error.message };
+      escalationRecord.metadata = {
+        ...escalationRecord.metadata,
+        error: error.message,
+        errorCode: error.code ?? null
+      };
 
       await db.collection('escalation_history').doc(escalationRecord.id).set(
         escalationRecord.toJSON()

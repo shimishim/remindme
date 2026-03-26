@@ -104,6 +104,33 @@ export class EscalationWorker {
     }
   }
 
+  async scheduleReminder(reminder) {
+    const scheduledTime = new Date(reminder.scheduledTime);
+    const delayMs = Math.max(0, scheduledTime.getTime() - Date.now());
+    const delayMinutes = Math.ceil(delayMs / 1000 / 60);
+    await this.queueEscalation(reminder.id, reminder.userId, 1, delayMinutes);
+  }
+
+  async cancelReminder(reminderId) {
+    if (!this.escalationQueue) return;
+
+    for (let level = 1; level <= 4; level++) {
+      try {
+        const job = await this.escalationQueue.getJob(`${reminderId}-L${level}`);
+        if (job) await job.remove();
+      } catch (error) {
+        console.warn(
+          `⚠️ Failed removing queued escalation L${level} for ${reminderId}: ${error.message}`
+        );
+      }
+    }
+  }
+
+  async rescheduleAfterSnooze(reminder, snoozeMinutes = 10) {
+    await this.cancelReminder(reminder.id);
+    await this.queueEscalation(reminder.id, reminder.userId, 1, snoozeMinutes);
+  }
+
   /**
    * Process escalation job
    */
@@ -133,6 +160,11 @@ export class EscalationWorker {
         const snoozedUntil = new Date(reminder.snoozedUntil);
         if (new Date() < snoozedUntil) {
           console.log(`⏭️ Skipping escalation - reminder snoozed until ${snoozedUntil}`);
+          const delayMinutes = Math.max(
+            1,
+            Math.ceil((snoozedUntil.getTime() - Date.now()) / 1000 / 60)
+          );
+          await this.queueEscalation(reminderId, userId, level, delayMinutes);
           return { skipped: true };
         }
         // Snooze period ended, re-activate reminder
@@ -216,6 +248,27 @@ export class EscalationWorker {
    */
   async startScheduleCheck(intervalMinutes = 5) {
     console.log(`🔄 Starting schedule check every ${intervalMinutes} minutes`);
+
+    if (!this.scheduleQueue) {
+      try {
+        await this.processScheduling({ data: {} });
+      } catch (err) {
+        console.error('❌ Initial inline schedule check error:', err.message);
+      }
+    } else {
+      try {
+        await this.scheduleQueue.add(
+          'schedule-check-initial',
+          {},
+          {
+            removeOnComplete: true,
+            removeOnFail: false
+          }
+        );
+      } catch (error) {
+        console.error('❌ Error adding initial schedule check job:', error.message);
+      }
+    }
 
     setInterval(async () => {
       if (!this.scheduleQueue) {

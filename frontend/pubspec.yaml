@@ -45,6 +45,7 @@ dependencies:
 
   # Utilities
   uuid: ^4.0.0
+  timezone: ^0.10.0
   connectivity_plus: ^5.0.0
   flutter_tts: ^4.2.5
   speech_to_text: ^7.3.0

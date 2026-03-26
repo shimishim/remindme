@@ -7,7 +7,12 @@ import { requireAuth } from '../middleware/auth.js';
  * Reminder Routes: CRUD operations and escalation management
  */
 
-export function createReminderRoutes(nlpParser, escalationEngine, escalationWorker, getScheduler) {
+export function createReminderRoutes(
+  nlpParser,
+  escalationEngine,
+  getEscalationWorker,
+  getScheduler
+) {
   const router = express.Router();
 
   // All reminder routes require authentication
@@ -45,10 +50,17 @@ export function createReminderRoutes(nlpParser, escalationEngine, escalationWork
       // Save to Firestore
       await db.collection('reminders').doc(reminder.id).set(reminder.toJSON());
 
-      // Schedule escalation via in-memory scheduler
-      const scheduler = getScheduler?.();
-      if (scheduler) {
-        scheduler.scheduleReminder({ id: reminder.id, ...reminder.toJSON() });
+      const reminderPayload = { id: reminder.id, ...reminder.toJSON() };
+
+      // Prefer durable queue scheduling when Redis/BullMQ is available.
+      const escalationWorker = getEscalationWorker?.();
+      if (escalationWorker) {
+        await escalationWorker.scheduleReminder(reminderPayload);
+      } else {
+        const scheduler = getScheduler?.();
+        if (scheduler) {
+          scheduler.scheduleReminder(reminderPayload);
+        }
       }
 
       // Get escalation plan
@@ -169,8 +181,13 @@ export function createReminderRoutes(nlpParser, escalationEngine, escalationWork
       });
 
       // Cancel pending escalations
-      const scheduler = getScheduler?.();
-      if (scheduler) scheduler.cancelReminder(reminderId);
+      const escalationWorker = getEscalationWorker?.();
+      if (escalationWorker) {
+        await escalationWorker.cancelReminder(reminderId);
+      } else {
+        const scheduler = getScheduler?.();
+        if (scheduler) scheduler.cancelReminder(reminderId);
+      }
 
       console.log(`✅ Reminder ${reminderId} marked as completed`);
 
@@ -213,9 +230,17 @@ export function createReminderRoutes(nlpParser, escalationEngine, escalationWork
       });
 
       // Reschedule escalations after snooze
-      const scheduler = getScheduler?.();
-      if (scheduler) {
-        scheduler.rescheduleAfterSnooze({ id: reminderId, ...reminder }, minutes);
+      const escalationWorker = getEscalationWorker?.();
+      if (escalationWorker) {
+        await escalationWorker.rescheduleAfterSnooze(
+          { id: reminderId, ...reminder },
+          minutes
+        );
+      } else {
+        const scheduler = getScheduler?.();
+        if (scheduler) {
+          scheduler.rescheduleAfterSnooze({ id: reminderId, ...reminder }, minutes);
+        }
       }
 
       console.log(`⏰ Reminder ${reminderId} snoozed for ${minutes} minutes`);
@@ -247,8 +272,13 @@ export function createReminderRoutes(nlpParser, escalationEngine, escalationWork
       await db.collection('reminders').doc(reminderId).delete();
 
       // Cancel pending escalations
-      const scheduler = getScheduler?.();
-      if (scheduler) scheduler.cancelReminder(reminderId);
+      const escalationWorker = getEscalationWorker?.();
+      if (escalationWorker) {
+        await escalationWorker.cancelReminder(reminderId);
+      } else {
+        const scheduler = getScheduler?.();
+        if (scheduler) scheduler.cancelReminder(reminderId);
+      }
 
       console.log(`🗑️ Reminder ${reminderId} deleted`);
 

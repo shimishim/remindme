@@ -12,18 +12,36 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
+  Future<void> _refreshReminderRuntimeState() async {
+    final api = ref.read(apiServiceProvider);
+    await registerFcmTokenIfNeeded(api);
+    final userId = ref.read(currentUserIdProvider);
+    await syncRemindersWithBackend(ref, userId);
+    await rescheduleAllPendingReminders(ref);
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Register FCM token with backend
-      final api = ref.read(apiServiceProvider);
-      registerFcmTokenIfNeeded(api);
-
-      // Reschedule all pending reminders (restores alarms lost after device reboot)
-      await rescheduleAllPendingReminders(ref);
+      await _refreshReminderRuntimeState();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshReminderRuntimeState();
+    }
   }
 
   @override
@@ -160,7 +178,11 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: Color(0xFF6B9FEF)),
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Color(0xFF6B9FEF),
+              ),
               const SizedBox(height: 16),
               Text('שגיאה בטעינה: $error'),
               const SizedBox(height: 8),
@@ -224,7 +246,7 @@ class _SectionHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

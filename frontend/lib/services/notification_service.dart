@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 /// Notification Channel IDs
@@ -34,6 +37,43 @@ class NotificationService {
 
     // Create notification channels for Android
     await _createNotificationChannels();
+  }
+
+  Future<void> ensurePermissionsForReliableDelivery() async {
+    await requestNotificationPermission();
+
+    if (!Platform.isAndroid) return;
+
+    final canExact = await canScheduleExactNotifications();
+    if (!canExact) {
+      await requestExactAlarmsPermission();
+    }
+
+    try {
+      final batteryPermission =
+          await Permission.ignoreBatteryOptimizations.status;
+      if (!batteryPermission.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (_) {
+      // Some devices/Android flavors do not expose this capability consistently.
+    }
+  }
+
+  Future<void> requestNotificationPermission() async {
+    final androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidImplementation?.requestNotificationsPermission();
+
+    final iosImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+    await iosImplementation?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   /// Create Android notification channels
@@ -229,7 +269,7 @@ class NotificationService {
     // Don't schedule notifications in the past
     if (tzScheduled.isBefore(now)) return;
 
-    final androidDetails = AndroidNotificationDetails(
+    const androidDetails = AndroidNotificationDetails(
       NotificationChannels.reminders,
       'Reminders',
       channelDescription: 'Scheduled reminder notification',
@@ -240,7 +280,7 @@ class NotificationService {
       visibility: NotificationVisibility.public,
     );
 
-    final details = NotificationDetails(android: androidDetails);
+    const details = NotificationDetails(android: androidDetails);
 
     // Try exact alarm first; fall back to inexact if permission not granted
     try {

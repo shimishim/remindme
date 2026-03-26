@@ -36,7 +36,12 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-const reminderRoutes = createReminderRoutes(nlpParser, escalationEngine, escalationWorker, () => inMemoryScheduler);
+const reminderRoutes = createReminderRoutes(
+  nlpParser,
+  escalationEngine,
+  () => escalationWorker,
+  () => inMemoryScheduler
+);
 app.use(`${config.API_PREFIX}/reminders`, reminderRoutes);
 app.use(`${config.API_PREFIX}/users`, userRoutes);
 
@@ -118,11 +123,6 @@ async function startServer() {
       console.warn('⚠️ Escalation worker failed to start (non-fatal):', workerError.message);
       escalationWorker = null;
     }
-
-    // Always start in-memory scheduler as fallback (or primary if no Redis)
-    inMemoryScheduler = new InMemoryScheduler(escalationEngine);
-    inMemoryScheduler.startPeriodicCheck(5);
-    console.log('✅ In-memory escalation scheduler started');
 
     // Always start in-memory scheduler as fallback (or primary if no Redis)
     inMemoryScheduler = new InMemoryScheduler(escalationEngine);

@@ -37,37 +37,7 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
       
-      <!-- Full-screen alert intent trigger -->
-      <intent-filter>
-        <action android:name="com.example.remindme.ESCALATION_ALERT" />
-        <category android:name="android.intent.category.DEFAULT" />
-      </intent-filter>
     </activity>
-
-    <!-- Full-screen alert activity -->
-    <activity
-      android:name=".FullScreenAlertActivity"
-      android:exported="true"
-      android:launchMode="singleInstance"
-      android:theme="@android:style/Theme.Translucent.NoTitleBar"
-      android:configChanges="orientation|screenSize"
-      android:showWhenLocked="true"
-      android:turnScreenOn="true">
-      
-      <intent-filter>
-        <action android:name="com.example.remindme.SHOW_ALERT" />
-      </intent-filter>
-    </activity>
-
-    <!-- Broadcast receiver for reminders -->
-    <receiver
-      android:name=".ReminderBroadcastReceiver"
-      android:exported="true">
-      
-      <intent-filter>
-        <action android:name="com.example.remindme.REMINDER_NOTIFICATION" />
-      </intent-filter>
-    </receiver>
 
     <!-- Boot receiver: restores notification alarms after device reboot.
          Works together with flutter_local_notifications' built-in
