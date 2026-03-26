@@ -18,6 +18,8 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
   String _selectedPersonality = 'sarcastic';
   bool _allowVoice = false;
   bool _isLoading = false;
+  bool _isCheckingVoice = false;
+  String? _savedPhoneNumber;
 
   late stt.SpeechToText _speech;
   final TtsService _tts = TtsService();
@@ -29,6 +31,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     super.initState();
     _textController = TextEditingController();
     _speech = stt.SpeechToText();
+    _loadSavedPhoneNumber();
   }
 
   @override
@@ -45,12 +48,47 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     return null;
   }
 
+  String _formatPhonePreview(String phoneNumber) {
+    if (phoneNumber.length <= 4) {
+      return phoneNumber;
+    }
+
+    final visibleSuffix = phoneNumber.substring(phoneNumber.length - 4);
+    return '...$visibleSuffix';
+  }
+
+  Future<void> _loadSavedPhoneNumber() async {
+    try {
+      final phoneNumber = await ref.read(apiServiceProvider).getMyPhoneNumber();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _savedPhoneNumber = phoneNumber;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _savedPhoneNumber = null;
+      });
+    }
+  }
+
   Future<bool> _ensurePhoneNumberForVoice() async {
     final api = ref.read(apiServiceProvider);
 
     try {
       final existingPhoneNumber = await api.getMyPhoneNumber();
       if (existingPhoneNumber != null && existingPhoneNumber.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _savedPhoneNumber = existingPhoneNumber;
+          });
+        }
         return true;
       }
     } catch (_) {
@@ -131,6 +169,9 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     try {
       await ref.read(apiServiceProvider).updatePhoneNumber(result);
       if (mounted) {
+        setState(() {
+          _savedPhoneNumber = result;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('מספר הטלפון נשמר לשיחות תזכורת')),
         );
@@ -147,17 +188,28 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
   }
 
   Future<void> _handleVoiceToggle(bool value) async {
+    if (_isCheckingVoice || _isLoading) {
+      return;
+    }
+
     if (!value) {
       setState(() => _allowVoice = false);
       return;
     }
+
+    setState(() {
+      _isCheckingVoice = true;
+    });
 
     final hasPhoneNumber = await _ensurePhoneNumberForVoice();
     if (!mounted) {
       return;
     }
 
-    setState(() => _allowVoice = hasPhoneNumber);
+    setState(() {
+      _allowVoice = hasPhoneNumber;
+      _isCheckingVoice = false;
+    });
   }
 
   @override
@@ -273,12 +325,24 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
           Card(
             child: CheckboxListTile(
               title: const Text('אפילו עם שיחת טלפון?'),
-              subtitle: const Text('אם לא תגיב, יתקשר אלייך'),
+              subtitle: Text(
+                _savedPhoneNumber == null
+                    ? 'אם לא תגיב, יתקשר אלייך'
+                    : 'שיחות יגיעו אל ${_formatPhonePreview(_savedPhoneNumber!)}',
+              ),
               value: _allowVoice,
-              onChanged: (value) async {
-                await _handleVoiceToggle(value ?? false);
-              },
-              secondary: const Icon(Icons.call),
+              onChanged: _isCheckingVoice || _isLoading
+                  ? null
+                  : (value) async {
+                      await _handleVoiceToggle(value ?? false);
+                    },
+              secondary: _isCheckingVoice
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.call),
             ),
           ),
           const SizedBox(height: 24),
@@ -406,7 +470,11 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     setState(() => _isListening = false);
   }
 
-  void _handleCreate() async {
+  Future<void> _handleCreate() async {
+    if (_isCheckingVoice) {
+      return;
+    }
+
     if (_textController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('אנא כתוב תזכורת')),
@@ -414,11 +482,13 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
       return;
     }
 
+    var allowVoiceForSubmission = _allowVoice;
     if (_allowVoice) {
       final hasPhoneNumber = await _ensurePhoneNumberForVoice();
       if (!hasPhoneNumber) {
         return;
       }
+      allowVoiceForSubmission = true;
     }
 
     setState(() => _isLoading = true);
@@ -429,7 +499,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
           CreateReminderParams(
             text: _textController.text,
             personality: _selectedPersonality,
-            allowVoice: _allowVoice,
+            allowVoice: allowVoiceForSubmission,
           ),
         ).future,
       );
