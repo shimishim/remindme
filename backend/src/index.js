@@ -17,6 +17,7 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Services
 const nlpParser = new NLPParser();
@@ -48,7 +49,15 @@ app.use(`${config.API_PREFIX}/users`, userRoutes);
 // Voice callback (Twilio webhook)
 app.post(`${config.API_PREFIX}/voice/callback`, async (req, res) => {
   try {
-    const { reminderId, digits } = req.body;
+    const reminderId = req.body.ReminderId || req.body.reminderId || req.query.reminderId;
+    const digits = req.body.Digits || req.body.digits;
+
+    if (!reminderId) {
+      res.set('Content-Type', 'text/xml');
+      return res.status(400).send(
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Say>Missing reminder identifier.</Say></Response>'
+      );
+    }
 
     if (digits) {
       await voiceService.handleVoiceCallback(reminderId, digits);

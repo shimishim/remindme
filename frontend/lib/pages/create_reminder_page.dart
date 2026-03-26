@@ -37,6 +37,129 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     super.dispose();
   }
 
+  String? _normalizePhoneNumber(String value) {
+    final normalized = value.replaceAll(RegExp(r'[\s()-]'), '');
+    if (RegExp(r'^\+[1-9]\d{7,14}$').hasMatch(normalized)) {
+      return normalized;
+    }
+    return null;
+  }
+
+  Future<bool> _ensurePhoneNumberForVoice() async {
+    final api = ref.read(apiServiceProvider);
+
+    try {
+      final existingPhoneNumber = await api.getMyPhoneNumber();
+      if (existingPhoneNumber != null && existingPhoneNumber.isNotEmpty) {
+        return true;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return false;
+      }
+    }
+
+    if (!mounted) {
+      return false;
+    }
+
+    final saved = await _promptForPhoneNumber();
+    return saved;
+  }
+
+  Future<bool> _promptForPhoneNumber() async {
+    final controller = TextEditingController();
+    String? validationError;
+
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('מספר טלפון לשיחות תזכורת'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                      'כדי שנוכל להתקשר אליך, הזן מספר בפורמט בינלאומי.'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      hintText: '+972501234567',
+                      errorText: validationError,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('ביטול'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final normalized = _normalizePhoneNumber(controller.text);
+                    if (normalized == null) {
+                      setDialogState(() {
+                        validationError = 'הזן מספר בפורמט +972501234567';
+                      });
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(normalized);
+                  },
+                  child: const Text('שמור'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (result == null || result.isEmpty) {
+      return false;
+    }
+
+    try {
+      await ref.read(apiServiceProvider).updatePhoneNumber(result);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('מספר הטלפון נשמר לשיחות תזכורת')),
+        );
+      }
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('שמירת מספר הטלפון נכשלה: $e')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _handleVoiceToggle(bool value) async {
+    if (!value) {
+      setState(() => _allowVoice = false);
+      return;
+    }
+
+    final hasPhoneNumber = await _ensurePhoneNumberForVoice();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() => _allowVoice = hasPhoneNumber);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,8 +275,8 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
               title: const Text('אפילו עם שיחת טלפון?'),
               subtitle: const Text('אם לא תגיב, יתקשר אלייך'),
               value: _allowVoice,
-              onChanged: (value) {
-                setState(() => _allowVoice = value ?? false);
+              onChanged: (value) async {
+                await _handleVoiceToggle(value ?? false);
               },
               secondary: const Icon(Icons.call),
             ),
@@ -289,6 +412,13 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
         const SnackBar(content: Text('אנא כתוב תזכורת')),
       );
       return;
+    }
+
+    if (_allowVoice) {
+      final hasPhoneNumber = await _ensurePhoneNumberForVoice();
+      if (!hasPhoneNumber) {
+        return;
+      }
     }
 
     setState(() => _isLoading = true);

@@ -8,6 +8,8 @@ import { db } from '../config/firebase.js';
 
 export class VoiceService {
   constructor() {
+    this.callbackBaseUrl = config.PUBLIC_BASE_URL?.replace(/\/$/, '');
+
     if (config.TWILIO_ACCOUNT_SID?.startsWith('AC') && config.TWILIO_AUTH_TOKEN) {
       this.client = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
     } else {
@@ -22,6 +24,10 @@ export class VoiceService {
   async makeReminderCall(userId, reminder, message) {
     if (!this.client) {
       throw new Error('Twilio not configured');
+    }
+
+    if (!this.callbackBaseUrl) {
+      throw new Error('PUBLIC_BASE_URL is not configured');
     }
 
     try {
@@ -67,13 +73,14 @@ export class VoiceService {
    * This is what Twilio will "say" to the user
    */
   generateTwiML(message, reminderId) {
+    const callbackUrl = this.buildVoiceCallbackUrl(reminderId);
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="he-IL">
     ${this.escapeTwiML(message)}
   </Say>
   
-  <Gather numDigits="1" action="/api/v1/voice/callback" timeout="10">
+  <Gather numDigits="1" action="${callbackUrl}" method="POST" timeout="10">
     <Say voice="alice" language="he-IL">
       לחץ אחד כדי לסמן כבוצע. לחץ שניים כדי לדחות.
     </Say>
@@ -82,10 +89,14 @@ export class VoiceService {
   <Say voice="alice" language="he-IL">
     לא שמעתי קלט. ניסיון שוב.
   </Say>
-  <Redirect>/api/v1/voice/callback?reminderId=${reminderId}&action=timeout</Redirect>
+  <Redirect method="POST">${callbackUrl}</Redirect>
 </Response>`;
 
     return twiml;
+  }
+
+  buildVoiceCallbackUrl(reminderId) {
+    return `${this.callbackBaseUrl}${config.API_PREFIX}/voice/callback?reminderId=${encodeURIComponent(reminderId)}`;
   }
 
   /**

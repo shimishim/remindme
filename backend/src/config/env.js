@@ -6,6 +6,7 @@ export const config = {
   // Server
   PORT: process.env.PORT || 3000,
   NODE_ENV: process.env.NODE_ENV || 'development',
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
 
   // Firebase
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,

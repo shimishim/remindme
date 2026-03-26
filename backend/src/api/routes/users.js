@@ -7,8 +7,40 @@ import { requireAuth } from '../middleware/auth.js';
  */
 const router = express.Router();
 
+function normalizePhoneNumber(phoneNumber) {
+  return String(phoneNumber ?? '').replace(/[\s()-]/g, '');
+}
+
+function isValidE164PhoneNumber(phoneNumber) {
+  return /^\+[1-9]\d{7,14}$/.test(phoneNumber);
+}
+
 // All routes require authentication
 router.use(requireAuth);
+
+/**
+ * GET /api/v1/users/me
+ * Get the authenticated user's stored profile fields.
+ */
+router.get('/me', async (req, res) => {
+  try {
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    const data = userDoc.exists ? userDoc.data() : {};
+
+    res.json({
+      success: true,
+      user: {
+        uid: req.user.uid,
+        email: req.user.email ?? data.email ?? null,
+        phoneNumber: data.phoneNumber ?? null,
+        fcmToken: data.fcmToken ?? null
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user profile:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 /**
  * PUT /api/v1/users/fcm-token
@@ -58,6 +90,43 @@ router.delete('/fcm-token', async (req, res) => {
     res.json({ success: true, message: 'FCM token removed' });
   } catch (error) {
     console.error('❌ Error removing FCM token:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/v1/users/phone-number
+ * Save the phone number used for voice-call reminders.
+ * Body: { phoneNumber: string } in E.164 format, for example +972501234567
+ */
+router.put('/phone-number', async (req, res) => {
+  const normalizedPhoneNumber = normalizePhoneNumber(req.body.phoneNumber);
+
+  if (!isValidE164PhoneNumber(normalizedPhoneNumber)) {
+    return res.status(400).json({
+      error: 'phoneNumber must be in E.164 format, for example +972501234567'
+    });
+  }
+
+  try {
+    await db.collection('users').doc(req.user.uid).set(
+      {
+        uid: req.user.uid,
+        email: req.user.email ?? null,
+        phoneNumber: normalizedPhoneNumber,
+        phoneNumberUpdatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
+
+    console.log(`📞 Phone number updated for user ${req.user.uid}`);
+    res.json({
+      success: true,
+      phoneNumber: normalizedPhoneNumber,
+      message: 'Phone number updated'
+    });
+  } catch (error) {
+    console.error('❌ Error updating phone number:', error);
     res.status(500).json({ error: error.message });
   }
 });

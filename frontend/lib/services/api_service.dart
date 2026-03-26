@@ -158,4 +158,31 @@ class ApiService {
       // Not critical, so don't rethrow
     }
   }
+
+  Future<String?> getMyPhoneNumber() async {
+    final res = await _dio.get('/api/v1/users/me');
+
+    if (res.statusCode == 200) {
+      final user = res.data['user'];
+      if (user is Map<String, dynamic>) {
+        return user['phoneNumber'] as String?;
+      }
+      if (user is Map) {
+        return user['phoneNumber']?.toString();
+      }
+    }
+
+    throw Exception('Failed to fetch user profile');
+  }
+
+  Future<void> updatePhoneNumber(String phoneNumber) async {
+    final res = await _dio.put(
+      '/api/v1/users/phone-number',
+      data: {'phoneNumber': phoneNumber},
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update phone number');
+    }
+  }
 }

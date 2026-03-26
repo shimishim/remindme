@@ -70,7 +70,7 @@ export function createReminderRoutes(
 
       res.status(201).json({
         success: true,
-        reminder: reminder.toJSON(),
+        reminder: reminderPayload,
         escalationPlan: escalationPlan,
         message: 'Reminder created successfully'
       });
