@@ -14,6 +14,35 @@ export function createReminderRoutes(
   getScheduler
 ) {
   const router = express.Router();
+  const workerTimeoutMs = 1500;
+
+  async function runWorkerWithFallback({
+    actionName,
+    workerAction,
+    schedulerAction
+  }) {
+    const scheduler = getScheduler?.();
+
+    try {
+      const escalationWorker = getEscalationWorker?.();
+      if (!escalationWorker || !workerAction) {
+        schedulerAction?.(scheduler);
+        return;
+      }
+
+      await Promise.race([
+        workerAction(escalationWorker),
+        new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`${actionName} timed out waiting for queue`));
+          }, workerTimeoutMs);
+        })
+      ]);
+    } catch (error) {
+      console.warn(`⚠️ ${actionName} falling back to in-memory scheduler:`, error.message);
+      schedulerAction?.(scheduler);
+    }
+  }
 
   // All reminder routes require authentication
   router.use(requireAuth);
@@ -52,16 +81,11 @@ export function createReminderRoutes(
 
       const reminderPayload = { id: reminder.id, ...reminder.toJSON() };
 
-      // Prefer durable queue scheduling when Redis/BullMQ is available.
-      const escalationWorker = getEscalationWorker?.();
-      if (escalationWorker) {
-        await escalationWorker.scheduleReminder(reminderPayload);
-      } else {
-        const scheduler = getScheduler?.();
-        if (scheduler) {
-          scheduler.scheduleReminder(reminderPayload);
-        }
-      }
+      await runWorkerWithFallback({
+        actionName: `schedule reminder ${reminder.id}`,
+        workerAction: worker => worker.scheduleReminder(reminderPayload),
+        schedulerAction: scheduler => scheduler?.scheduleReminder(reminderPayload)
+      });
 
       // Get escalation plan
       const escalationPlan = escalationEngine.getEscalationPlan(reminder);
@@ -180,14 +204,11 @@ export function createReminderRoutes(
         completedAt: new Date().toISOString()
       });
 
-      // Cancel pending escalations
-      const escalationWorker = getEscalationWorker?.();
-      if (escalationWorker) {
-        await escalationWorker.cancelReminder(reminderId);
-      } else {
-        const scheduler = getScheduler?.();
-        if (scheduler) scheduler.cancelReminder(reminderId);
-      }
+      await runWorkerWithFallback({
+        actionName: `cancel reminder ${reminderId}`,
+        workerAction: worker => worker.cancelReminder(reminderId),
+        schedulerAction: scheduler => scheduler?.cancelReminder(reminderId)
+      });
 
       console.log(`✅ Reminder ${reminderId} marked as completed`);
 
@@ -229,19 +250,15 @@ export function createReminderRoutes(
         escalationLevel: 0 // Reset escalation
       });
 
-      // Reschedule escalations after snooze
-      const escalationWorker = getEscalationWorker?.();
-      if (escalationWorker) {
-        await escalationWorker.rescheduleAfterSnooze(
+      await runWorkerWithFallback({
+        actionName: `reschedule reminder ${reminderId}`,
+        workerAction: worker => worker.rescheduleAfterSnooze(
           { id: reminderId, ...reminder },
           minutes
-        );
-      } else {
-        const scheduler = getScheduler?.();
-        if (scheduler) {
-          scheduler.rescheduleAfterSnooze({ id: reminderId, ...reminder }, minutes);
-        }
-      }
+        ),
+        schedulerAction: scheduler =>
+          scheduler?.rescheduleAfterSnooze({ id: reminderId, ...reminder }, minutes)
+      });
 
       console.log(`⏰ Reminder ${reminderId} snoozed for ${minutes} minutes`);
 
@@ -271,14 +288,11 @@ export function createReminderRoutes(
 
       await db.collection('reminders').doc(reminderId).delete();
 
-      // Cancel pending escalations
-      const escalationWorker = getEscalationWorker?.();
-      if (escalationWorker) {
-        await escalationWorker.cancelReminder(reminderId);
-      } else {
-        const scheduler = getScheduler?.();
-        if (scheduler) scheduler.cancelReminder(reminderId);
-      }
+      await runWorkerWithFallback({
+        actionName: `delete reminder ${reminderId}`,
+        workerAction: worker => worker.cancelReminder(reminderId),
+        schedulerAction: scheduler => scheduler?.cancelReminder(reminderId)
+      });
 
       console.log(`🗑️ Reminder ${reminderId} deleted`);
 
