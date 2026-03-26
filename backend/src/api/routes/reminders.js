@@ -162,6 +162,7 @@ export function createReminderRoutes(
 
       const reminder = doc.data();
       if (reminder.userId !== req.user.uid) return res.status(403).json({ error: 'Forbidden' });
+      const reminderPayload = { id: doc.id, ...reminder };
 
       const escalationHistory = await db
         .collection('escalation_history')
@@ -176,7 +177,7 @@ export function createReminderRoutes(
 
       res.json({
         success: true,
-        reminder: reminder,
+        reminder: reminderPayload,
         escalationHistory: history
       });
     } catch (error) {

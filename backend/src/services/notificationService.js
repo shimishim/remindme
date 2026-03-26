@@ -39,6 +39,9 @@ export class NotificationService {
       urgent = false
     } = options;
 
+    const normalizedTtlSeconds = Math.max(0, Number(ttlSeconds) || 0);
+    const androidTtlMs = normalizedTtlSeconds * 1000;
+
     const message = {
       token: fcmToken,
       data: Object.fromEntries(
@@ -50,7 +53,7 @@ export class NotificationService {
       ),
       android: {
         priority: 'high',
-        ttl: `${ttlSeconds}s`,
+        ttl: androidTtlMs,
         collapseKey: collapseKey ?? data.reminderId ?? undefined,
         notification: systemVisible
             ? {
@@ -66,7 +69,7 @@ export class NotificationService {
       apns: {
         headers: {
           'apns-priority': '10',
-          'apns-expiration': `${Math.floor(Date.now() / 1000) + ttlSeconds}`
+          'apns-expiration': `${Math.floor(Date.now() / 1000) + normalizedTtlSeconds}`
         },
         payload: systemVisible
             ? {
