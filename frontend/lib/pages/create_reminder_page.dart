@@ -18,8 +18,6 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
   String _selectedPersonality = 'sarcastic';
   bool _allowVoice = false;
   bool _isLoading = false;
-  bool _isCheckingVoiceAvailability = true;
-  bool _voiceAvailable = false;
 
   late stt.SpeechToText _speech;
   final TtsService _tts = TtsService();
@@ -31,54 +29,12 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
     super.initState();
     _textController = TextEditingController();
     _speech = stt.SpeechToText();
-    _loadVoiceAvailability();
   }
 
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadVoiceAvailability() async {
-    try {
-      final phoneNumber = await ref.read(apiServiceProvider).getMyPhoneNumber();
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _voiceAvailable = phoneNumber != null && phoneNumber.isNotEmpty;
-        _isCheckingVoiceAvailability = false;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _voiceAvailable = false;
-        _isCheckingVoiceAvailability = false;
-      });
-    }
-  }
-
-  void _handleVoiceToggle(bool value) {
-    if (!value) {
-      setState(() => _allowVoice = false);
-      return;
-    }
-
-    if (!_voiceAvailable) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('כרגע אין מספר זמין לשיחת תזכורת עבור המשתמש הזה'),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _allowVoice = true);
   }
 
   @override
@@ -194,26 +150,14 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
           Card(
             child: CheckboxListTile(
               title: const Text('אפילו עם שיחת טלפון?'),
-              subtitle: Text(
-                _isCheckingVoiceAvailability
-                    ? 'בודק אם שיחת תזכורת זמינה...'
-                    : _voiceAvailable
-                        ? 'אם לא תגיב, תגיע שיחת תזכורת'
-                        : 'שיחה אינה זמינה כרגע עבור המשתמש הזה',
-              ),
+              subtitle: const Text('אם לא תגיב, ייתכן שתופעל שיחת תזכורת'),
               value: _allowVoice,
-              onChanged: _isLoading || _isCheckingVoiceAvailability
+              onChanged: _isLoading
                   ? null
                   : (value) {
-                      _handleVoiceToggle(value ?? false);
+                      setState(() => _allowVoice = value ?? false);
                     },
-              secondary: _isCheckingVoiceAvailability
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.call),
+              secondary: const Icon(Icons.call),
             ),
           ),
           const SizedBox(height: 24),
