@@ -17,8 +17,6 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _refreshReminderRuntimeState() async {
     final api = ref.read(apiServiceProvider);
     await registerFcmTokenIfNeeded(api);
-    final userId = ref.read(currentUserIdProvider);
-    await syncRemindersWithBackend(ref, userId);
     await rescheduleAllPendingReminders(ref);
   }
 

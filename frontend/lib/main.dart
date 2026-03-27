@@ -121,7 +121,6 @@ void main() async {
   try {
     debugPrint('main(): Initializing notification service...');
     await notificationService.initialize();
-    await notificationService.ensurePermissionsForReliableDelivery();
     debugPrint('main(): Notification service initialized');
   } catch (e, st) {
     debugPrint('main(): Notification service init failed: $e\n$st');

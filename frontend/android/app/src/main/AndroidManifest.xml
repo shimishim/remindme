@@ -8,15 +8,13 @@
   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
   <!-- Auto-granted on Android 13+ for alarm/reminder apps -->
   <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-  <uses-permission android:name="android.permission.CALL_PHONE" />
-  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
-  <!-- Required to request battery optimisation exemption via permission_handler -->
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
   <application
-    android:label="RemindMe"
+    android:label="remind-me"
+    android:allowBackup="false"
+    android:fullBackupContent="false"
     android:icon="@mipmap/ic_launcher">
 
     <meta-data

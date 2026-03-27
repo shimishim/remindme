@@ -17,17 +17,18 @@ class AppDatabase extends _$AppDatabase {
   // ========== REMINDER OPERATIONS ==========
 
   Future<void> createReminder(ReminderEntity reminder) {
-    return into(reminders).insert(reminder);
+    return into(reminders).insert(
+      reminder,
+      mode: InsertMode.insertOrReplace,
+    );
   }
 
   Future<List<ReminderEntity>> getRemindersByUserId(String userId) {
-    return (select(reminders)..where((r) => r.userId.equals(userId)))
-        .get();
+    return (select(reminders)..where((r) => r.userId.equals(userId))).get();
   }
 
   Future<List<ReminderEntity>> getPendingReminders() {
-    return (select(reminders)..where((r) => r.status.equals('pending')))
-        .get();
+    return (select(reminders)..where((r) => r.status.equals('pending'))).get();
   }
 
   Stream<List<ReminderEntity>> watchPendingReminders() {
@@ -36,8 +37,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<ReminderEntity>> getSnoozedReminders() {
-    return (select(reminders)..where((r) => r.status.equals('snoozed')))
-        .get();
+    return (select(reminders)..where((r) => r.status.equals('snoozed'))).get();
   }
 
   Future<ReminderEntity?> getReminderById(String reminderId) {
@@ -52,29 +52,27 @@ class AppDatabase extends _$AppDatabase {
   Future<void> completeReminder(String reminderId) {
     return (update(reminders)..where((r) => r.id.equals(reminderId)))
         .write(RemindersCompanion(
-          status: const Value('completed'),
-          completedAt: Value(DateTime.now()),
-        ));
+      status: const Value('completed'),
+      completedAt: Value(DateTime.now()),
+    ));
   }
 
   Future<void> snoozeReminder(String reminderId, Duration duration) {
     final snoozedUntil = DateTime.now().add(duration);
     return (update(reminders)..where((r) => r.id.equals(reminderId)))
         .write(RemindersCompanion(
-          status: const Value('snoozed'),
-          snoozedUntil: Value(snoozedUntil),
-          escalationLevel: const Value(0),
-        ));
+      status: const Value('snoozed'),
+      snoozedUntil: Value(snoozedUntil),
+      escalationLevel: const Value(0),
+    ));
   }
 
   Future<void> deleteReminder(String reminderId) {
-    return (delete(reminders)..where((r) => r.id.equals(reminderId)))
-        .go();
+    return (delete(reminders)..where((r) => r.id.equals(reminderId))).go();
   }
 
   Stream<List<ReminderEntity>> watchUserReminders(String userId) {
-    return (select(reminders)..where((r) => r.userId.equals(userId)))
-        .watch();
+    return (select(reminders)..where((r) => r.userId.equals(userId))).watch();
   }
 
   // ========== ESCALATION HISTORY OPERATIONS ==========
@@ -83,7 +81,8 @@ class AppDatabase extends _$AppDatabase {
     return into(escalationHistories).insert(escalation);
   }
 
-  Future<List<EscalationHistoryEntity>> getEscalationHistory(String reminderId) {
+  Future<List<EscalationHistoryEntity>> getEscalationHistory(
+      String reminderId) {
     return (select(escalationHistories)
           ..where((e) => e.reminderId.equals(reminderId))
           ..orderBy([(e) => OrderingTerm(expression: e.triggeredAt)]))
@@ -106,9 +105,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> markNotificationAsRead(String notificationId) {
     return (update(notifications)..where((n) => n.id.equals(notificationId)))
         .write(NotificationsCompanion(
-          read: const Value(true),
-          readAt: Value(DateTime.now()),
-        ));
+      read: const Value(true),
+      readAt: Value(DateTime.now()),
+    ));
   }
 
   // ========== CLEANUP ==========
@@ -125,7 +124,7 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'reminder_app.db'));
-    
+
     return NativeDatabase(file);
   });
 }
