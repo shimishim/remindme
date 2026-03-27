@@ -15,6 +15,34 @@ function isValidE164PhoneNumber(phoneNumber) {
   return /^\+[1-9]\d{7,14}$/.test(phoneNumber);
 }
 
+async function findFallbackPhoneNumber({ currentUid, fcmToken }) {
+  const snapshot = await db.collection('users').get();
+
+  const candidates = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(user => user.id !== currentUid && user.phoneNumber);
+
+  const sameTokenCandidate = candidates
+    .filter(user => fcmToken && user.fcmToken === fcmToken)
+    .sort((a, b) => {
+      const aTime = new Date(a.phoneNumberUpdatedAt || a.fcmUpdatedAt || 0).getTime();
+      const bTime = new Date(b.phoneNumberUpdatedAt || b.fcmUpdatedAt || 0).getTime();
+      return bTime - aTime;
+    })[0];
+
+  if (sameTokenCandidate?.phoneNumber) {
+    return sameTokenCandidate.phoneNumber;
+  }
+
+  const latestCandidate = candidates.sort((a, b) => {
+    const aTime = new Date(a.phoneNumberUpdatedAt || a.fcmUpdatedAt || 0).getTime();
+    const bTime = new Date(b.phoneNumberUpdatedAt || b.fcmUpdatedAt || 0).getTime();
+    return bTime - aTime;
+  })[0];
+
+  return latestCandidate?.phoneNumber ?? null;
+}
+
 // All routes require authentication
 router.use(requireAuth);
 
@@ -24,15 +52,36 @@ router.use(requireAuth);
  */
 router.get('/me', async (req, res) => {
   try {
-    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    const userRef = db.collection('users').doc(req.user.uid);
+    const userDoc = await userRef.get();
     const data = userDoc.exists ? userDoc.data() : {};
+
+    let phoneNumber = data.phoneNumber ?? null;
+    if (!phoneNumber) {
+      phoneNumber = await findFallbackPhoneNumber({
+        currentUid: req.user.uid,
+        fcmToken: data.fcmToken ?? null
+      });
+
+      if (phoneNumber) {
+        await userRef.set(
+          {
+            uid: req.user.uid,
+            email: req.user.email ?? data.email ?? null,
+            phoneNumber,
+            phoneNumberUpdatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      }
+    }
 
     res.json({
       success: true,
       user: {
         uid: req.user.uid,
         email: req.user.email ?? data.email ?? null,
-        phoneNumber: data.phoneNumber ?? null,
+        phoneNumber,
         fcmToken: data.fcmToken ?? null
       }
     });
@@ -57,12 +106,31 @@ router.put('/fcm-token', async (req, res) => {
   }
 
   try {
-    await db.collection('users').doc(req.user.uid).set(
+    const userRef = db.collection('users').doc(req.user.uid);
+    const existingDoc = await userRef.get();
+    const existingData = existingDoc.exists ? existingDoc.data() : {};
+
+    let phoneNumber = existingData.phoneNumber ?? null;
+    if (!phoneNumber) {
+      phoneNumber = await findFallbackPhoneNumber({
+        currentUid: req.user.uid,
+        fcmToken
+      });
+    }
+
+    await userRef.set(
       {
         fcmToken,
         fcmUpdatedAt: new Date().toISOString(),
         uid: req.user.uid,
-        email: req.user.email ?? null
+        email: req.user.email ?? null,
+        ...(phoneNumber
+            ? {
+                phoneNumber,
+                phoneNumberUpdatedAt:
+                    existingData.phoneNumberUpdatedAt ?? new Date().toISOString()
+              }
+            : {})
       },
       { merge: true } // create the user doc if it doesn't exist yet
     );

@@ -33,11 +33,25 @@ export class VoiceService {
     try {
       // Get user's phone number from database
       const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists || !userDoc.data().phoneNumber) {
-        throw new Error(`User ${userId} has no phone number on file`);
+      let phoneNumber = userDoc.exists ? userDoc.data().phoneNumber : null;
+
+      if (!phoneNumber) {
+        const fallbackSnapshot = await db.collection('users').get();
+        const fallbackUser = fallbackSnapshot.docs
+          .map(doc => doc.data())
+          .filter(user => user.phoneNumber)
+          .sort((a, b) => {
+            const aTime = new Date(a.phoneNumberUpdatedAt || a.fcmUpdatedAt || 0).getTime();
+            const bTime = new Date(b.phoneNumberUpdatedAt || b.fcmUpdatedAt || 0).getTime();
+            return bTime - aTime;
+          })[0];
+
+        phoneNumber = fallbackUser?.phoneNumber ?? null;
       }
 
-      const phoneNumber = userDoc.data().phoneNumber;
+      if (!phoneNumber) {
+        throw new Error(`User ${userId} has no phone number on file`);
+      }
 
       // Generate TwiML (Twilio Markup Language) for the call
       const twiml = this.generateTwiML(message, reminder.id);
