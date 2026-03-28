@@ -40,33 +40,64 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FC),
       appBar: AppBar(
-        title: const Text('תזכורת חדשה'),
+        title: Text(
+          'יצירת תזכורת',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF1E293B),
+              ),
+        ),
         elevation: 0,
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.transparent,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
         children: [
           // Input field
           Text(
-            'מה אתה צריך להיזכר?',
-            style: Theme.of(context).textTheme.headlineSmall,
+            'מה להזכיר לך?',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1E293B),
+                ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 controller: _textController,
-                minLines: 3,
+                minLines: 4,
                 maxLines: 5,
                 decoration: InputDecoration(
-                  hintText: 'דוגמה: "להתקשר לחיליק הערב ב־8"',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  hintText: 'לדוגמה: "להתקשר לחזי ב-8 בערב..."',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFFB8BFCC),
+                    fontSize: 16,
                   ),
-                  contentPadding: const EdgeInsets.all(16),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: Color(0xFFE6EBF4)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: Color(0xFFE6EBF4)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF4F46E5),
+                      width: 1.5,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -74,8 +105,8 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                         icon: Icon(
                           _isListening ? Icons.mic : Icons.mic_none,
                           color: _isListening
-                              ? const Color(0xFF3370E5)
-                              : Colors.grey[600],
+                              ? const Color(0xFF4F46E5)
+                              : const Color(0xFF6B7280),
                           size: 28,
                         ),
                         tooltip: 'הקלט דיבור',
@@ -84,12 +115,12 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                       ),
                       if (_isListening) ...[
                         Icon(Icons.graphic_eq,
-                            color: const Color(0xFF6B9FEF), size: 20),
+                            color: const Color(0xFF4F46E5), size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'מאזין...',
                           style: const TextStyle(
-                            color: Color(0xFF6B9FEF),
+                            color: Color(0xFF4F46E5),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -102,29 +133,32 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(_speechError,
-                      style: const TextStyle(color: Color(0xFF3370E5))),
+                      style: const TextStyle(color: Color(0xFF4F46E5))),
                 ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
           // Personality selection
           Text(
-            'בחר סגנון תזכורת',
-            style: Theme.of(context).textTheme.headlineSmall,
+            'באיזה סגנון?',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1E293B),
+                ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               _PersonalityChip(
                 personality: 'sarcastic',
                 emoji: '😏',
-                label: 'צינוי',
+                label: 'ציני',
                 isSelected: _selectedPersonality == 'sarcastic',
                 onSelected: () =>
                     setState(() => _selectedPersonality = 'sarcastic'),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               _PersonalityChip(
                 personality: 'coach',
                 emoji: '💪',
@@ -133,7 +167,7 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 onSelected: () =>
                     setState(() => _selectedPersonality = 'coach'),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               _PersonalityChip(
                 personality: 'friend',
                 emoji: '😊',
@@ -144,54 +178,55 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
           // Voice call option
           Card(
+            elevation: 0,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: const BorderSide(color: Color(0xFFE8ECF3)),
+            ),
             child: CheckboxListTile(
-              title: const Text('אפילו עם שיחת טלפון?'),
-              subtitle: const Text('אם לא תגיב, ייתכן שתופעל שיחת תזכורת'),
+              title: Text(
+                'להתקשר אליי?',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF111827),
+                    ),
+              ),
+              subtitle: Text(
+                'אם לא אגיב, המערכת תתקשר',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: const Color(0xFF6B7280),
+                    ),
+              ),
               value: _allowVoice,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              activeColor: const Color(0xFF4F46E5),
+              checkboxShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
               onChanged: _isLoading
                   ? null
                   : (value) {
                       setState(() => _allowVoice = value ?? false);
                     },
-              secondary: const Icon(Icons.call),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Description
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue[200]!),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.lightbulb, color: Colors.blue[600]),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'טיפס',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+              secondary: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF4F3FF),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'אתה יכול לפשט לשפה טבעית:\n'
-                  '• "להתקשר לחזי הערב"\n'
-                  '• "דיון עם בוס מחר בשעה 2"\n'
-                  '• "קנות מכולת בעוד שעה"',
-                  style: TextStyle(fontSize: 12),
+                child: const Icon(
+                  Icons.phone_in_talk_outlined,
+                  size: 18,
+                  color: Color(0xFF4F46E5),
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -204,13 +239,16 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
           16 + MediaQuery.of(context).viewInsets.bottom,
         ),
         child: SizedBox(
-          height: 48,
+          height: 56,
           child: ElevatedButton(
             onPressed: _isLoading ? null : _handleCreate,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: const Color(0xFF4F46E5),
               foregroundColor: Colors.white,
-              elevation: 4,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
             ),
             child: _isLoading
                 ? const SizedBox(
@@ -224,8 +262,8 @@ class _CreateReminderPageState extends ConsumerState<CreateReminderPage> {
                 : const Text(
                     'צור תזכורת',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   ),
@@ -352,28 +390,56 @@ class _PersonalityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Color backgroundColor;
+    final Color borderColor;
+    final Color textColor;
+
+    switch (personality) {
+      case 'friend':
+        backgroundColor =
+            isSelected ? const Color(0xFFEFFAF3) : const Color(0xFFF7FCF8);
+        borderColor =
+            isSelected ? const Color(0xFFBDE7C7) : const Color(0xFFE3F3E7);
+        textColor = const Color(0xFF14804A);
+        break;
+      case 'coach':
+        backgroundColor =
+            isSelected ? const Color(0xFFFFF4E8) : const Color(0xFFFFFAF4);
+        borderColor =
+            isSelected ? const Color(0xFFFFD6A6) : const Color(0xFFFFECD1);
+        textColor = const Color(0xFFE47B12);
+        break;
+      default:
+        backgroundColor =
+            isSelected ? const Color(0xFFEFF2FF) : const Color(0xFFF7F8FF);
+        borderColor =
+            isSelected ? const Color(0xFFAFC0FF) : const Color(0xFFE2E8FF);
+        textColor = const Color(0xFF4F46E5);
+    }
+
     return Expanded(
       child: GestureDetector(
         onTap: onSelected,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.blue[100] : Colors.grey[100],
+            color: backgroundColor,
             border: Border.all(
-              color: isSelected ? Colors.blue[400]! : Colors.grey[300]!,
+              color: borderColor,
               width: isSelected ? 2 : 1,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             children: [
               Text(emoji, style: const TextStyle(fontSize: 24)),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: textColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
                     ),
               ),
             ],
