@@ -212,13 +212,14 @@ export class EscalationWorker {
       console.log('⚙️ Processing reminder scheduling...');
 
       const now = new Date();
-      const tenMinutesAhead = new Date(now.getTime() + 10 * 60000);
 
-      // Find all pending reminders that are due in the next 10 minutes
+      // Find ALL pending reminders regardless of how far in the future they are.
+      // Previously this only looked 10 minutes ahead, so any reminder scheduled
+      // more than 10 minutes out would never be queued after a server restart.
+      // BullMQ handles arbitrary future delays via its sorted-set storage in Redis.
       const snapshot = await db
         .collection('reminders')
         .where('status', '==', 'pending')
-        .where('scheduledTime', '<=', tenMinutesAhead.toISOString())
         .where('scheduledTime', '>', now.toISOString())
         .get();
 

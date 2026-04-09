@@ -163,13 +163,15 @@ export class InMemoryScheduler {
   async #loadPendingReminders() {
     try {
       const now = new Date();
-      const fifteenMinutesAhead = new Date(now.getTime() + 15 * 60_000);
 
-      // 1. Pick up pending reminders due soon
+      // 1. Pick up ALL pending reminders not yet scheduled.
+      // No upper time bound — a reminder due in 3 hours or 3 days must still
+      // be loaded so scheduleReminder() can set the correct setTimeout delay.
+      // Previously this only looked 15 minutes ahead, which caused all
+      // long-duration reminders to be silently missed after a server restart.
       const pendingSnapshot = await db
         .collection('reminders')
         .where('status', '==', 'pending')
-        .where('scheduledTime', '<=', fifteenMinutesAhead.toISOString())
         .get();
 
       let scheduled = 0;
