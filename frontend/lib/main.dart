@@ -126,6 +126,18 @@ void main() async {
     debugPrint('main(): Notification service init failed: $e\n$st');
   }
 
+  // Ensure exact alarm + battery optimization permissions are granted.
+  // Without SCHEDULE_EXACT_ALARM on Android 12+, the OS may defer alarms
+  // by hours when the device goes idle — causing long reminders (>1h) to
+  // fire late or not at all. Must be called before any reminder is created.
+  try {
+    debugPrint('main(): Requesting exact alarm and battery optimization permissions...');
+    await notificationService.ensurePermissionsForReliableDelivery();
+    debugPrint('main(): Exact alarm permissions ensured');
+  } catch (e, st) {
+    debugPrint('main(): Exact alarm permission request failed: $e\n$st');
+  }
+
   final apiService = ApiService(baseUrl: remoteConfig.apiBaseUrl);
 
   // Request notification permissions
